@@ -1,0 +1,7 @@
+{
+  "permissions": {
+    "allow": [
+      "PowerShell(Invoke-WebRequest -Uri \"http://localhost:4000/health\" -UseBasicParsing)"
+    ]
+  }
+}

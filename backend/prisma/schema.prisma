@@ -1,0 +1,126 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+
+model User {
+  id            String         @id @default(cuid())
+  fullName      String
+  phoneNumber   String         @unique
+  email         String?        @unique
+  password      String
+  role          String         @default("CUSTOMER")
+  createdAt        DateTime          @default(now())
+  bookings         Booking[]
+  driverProfile    DriverProfile?
+  packagePurchases PackagePurchase[]
+
+  @@map("users")
+}
+
+model DriverProfile {
+  id                    String         @id @default(cuid())
+  userId                String         @unique
+  user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profilePhoto          String?
+  licenseNumber         String         @unique
+  vehicleMake           String
+  vehicleModel          String
+  vehicleColor          String
+  vehiclePlate          String
+  isAvailable           Boolean        @default(true)
+  currentLatitude       Float?
+  currentLongitude      Float?
+  lastLocationUpdatedAt DateTime?
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
+  bookings              Booking[]
+
+  @@map("driver_profiles")
+}
+
+model Booking {
+  id                  String        @id @default(cuid())
+  bookingRef          String        @unique // Format: TRQ-XXXXXXXX
+  pickupDate          DateTime
+  pickupTime          String
+  pickupAddress       String
+  passengerCount      Int
+  carryOnCount        Int           @default(0)
+  checkedLuggageCount Int           @default(0)
+  tripDirection       String        @default("TO_DFW")
+  dropoffTerminal     String
+  airline             String?
+  departureTime       String?
+  phoneNumber         String
+  email               String?
+  bookingStatus       String        @default("PENDING")
+  rideStatus          String        @default("UNASSIGNED")
+  paymentStatus       String        @default("UNPAID")
+  price               Decimal       @default(99.00)
+  qrHash              String        @unique
+  qrCode              String?       // Base64 data URL
+  
+  userId              String?
+  user                User?         @relation(fields: [userId], references: [id])
+  
+  driverId            String?
+  driver              DriverProfile? @relation(fields: [driverId], references: [id])
+  
+  transaction         Transaction?
+
+  assignedAt          DateTime?
+  driverStartedAt     DateTime?
+  driverArrivedAt     DateTime?
+  passengerPickedUpAt DateTime?
+  completedAt         DateTime?
+  
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  @@index([driverId])
+  @@index([userId])
+  @@index([rideStatus])
+  @@index([paymentStatus])
+  @@index([pickupDate])
+  @@map("bookings")
+}
+
+model Transaction {
+  id                  String        @id @default(cuid())
+  bookingId           String        @unique
+  booking             Booking       @relation(fields: [bookingId], references: [id])
+  stripePaymentIntent String        @unique
+  amount              Int
+  currency            String        @default("usd")
+  paymentStatus       String        @default("UNPAID")
+  createdAt           DateTime      @default(now())
+
+  @@map("transactions")
+}
+
+model PackagePurchase {
+  id              String   @id @default(cuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id])
+  packageId       String
+  packageName     String
+  totalRides      Int
+  remainingRides  Int
+  purchaseDate    DateTime @default(now())
+  expirationDate  DateTime
+  paymentStatus   String   @default("UNPAID")
+  stripeSessionId String   @unique
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([userId])
+  @@index([paymentStatus])
+  @@map("package_purchases")
+}

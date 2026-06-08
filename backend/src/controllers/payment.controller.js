@@ -1,0 +1,183 @@
+const prisma = require('../config/prisma');
+const { generateQR } = require('./booking.controller');
+
+function getStripe() {
+  if (!process.env.STRIPE_RESTRICTED_KEY) return null;
+  return require('stripe')(process.env.STRIPE_RESTRICTED_KEY);
+}
+
+async function createPaymentIntent(req, res, next) {
+  try {
+    const stripe = getStripe();
+    if (!stripe) {
+      return res.status(503).json({ error: 'Payment system not configured. Add STRIPE_RESTRICTED_KEY to backend/.env' });
+    }
+
+    const { bookingId } = req.body;
+    if (!bookingId) return res.status(400).json({ error: 'bookingId is required' });
+
+    const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    // Use the stored booking price, not a hardcoded value
+    const amountCents = Math.round(Number(booking.price) * 100);
+    if (amountCents < 50) return res.status(400).json({ error: 'Invalid booking price' });
+
+    // Idempotency: reuse existing PaymentIntent if one exists for this booking
+    const existing = await prisma.transaction.findUnique({ where: { bookingId } });
+    if (existing) {
+      if (existing.paymentStatus === 'PAID') {
+        return res.status(400).json({ error: 'This booking has already been paid.' });
+      }
+      // Try to reuse the existing intent
+      const existingIntent = await stripe.paymentIntents.retrieve(existing.stripePaymentIntent);
+      if (existingIntent.status !== 'canceled' && existingIntent.status !== 'succeeded') {
+        return res.json({ clientSecret: existingIntent.client_secret });
+      }
+      // Existing intent is stale — create a fresh one and update the record
+      const freshIntent = await stripe.paymentIntents.create({
+        amount: amountCents,
+        currency: 'usd',
+        metadata: { bookingId }
+      });
+      await prisma.transaction.update({
+        where: { bookingId },
+        data: { stripePaymentIntent: freshIntent.id, amount: amountCents, paymentStatus: 'UNPAID' }
+      });
+      return res.json({ clientSecret: freshIntent.client_secret });
+    }
+
+    const intent = await stripe.paymentIntents.create({
+      amount: amountCents,
+      currency: 'usd',
+      metadata: { bookingId }
+    });
+
+    await prisma.transaction.create({
+      data: {
+        bookingId,
+        stripePaymentIntent: intent.id,
+        amount: amountCents,
+        currency: 'usd',
+        paymentStatus: 'UNPAID'
+      }
+    });
+
+    res.json({ clientSecret: intent.client_secret });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function handleWebhook(req, res, next) {
+  const stripe = getStripe();
+  if (!stripe) return res.status(503).json({ error: 'Payment system not configured' });
+
+  // STRIPE_WEBHOOK_SECRET must be set; without it we cannot verify authenticity
+  if (!process.env.STRIPE_WEBHOOK_SECRET) {
+    console.error('[webhook] STRIPE_WEBHOOK_SECRET is not set — rejecting event');
+    return res.status(503).json({ error: 'Webhook secret not configured' });
+  }
+
+  const sig = req.headers['stripe-signature'];
+  let event;
+
+  try {
+    event = stripe.webhooks.constructEvent(req.body, sig, process.env.STRIPE_WEBHOOK_SECRET);
+  } catch (err) {
+    console.error('[webhook] Signature verification failed:', err.message);
+    return res.status(400).json({ error: 'Webhook signature invalid' });
+  }
+
+  try {
+    if (event.type === 'payment_intent.succeeded') {
+      const intent = event.data.object;
+      const bookingId = intent.metadata?.bookingId;
+      if (!bookingId) return res.json({ received: true });
+
+      const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
+      if (!booking) return res.json({ received: true });
+
+      // Idempotency — skip re-processing if already fully confirmed with a QR
+      if (booking.bookingStatus === 'CONFIRMED' && booking.paymentStatus === 'PAID' && booking.qrCode) {
+        return res.json({ received: true });
+      }
+
+      const qrCode = booking.qrCode || await generateQR(bookingId);
+
+      await prisma.booking.update({
+        where: { id: bookingId },
+        data: { bookingStatus: 'CONFIRMED', paymentStatus: 'PAID', qrCode }
+      });
+
+      await prisma.transaction.updateMany({
+        where: { stripePaymentIntent: intent.id },
+        data: { paymentStatus: 'PAID' }
+      });
+    }
+
+    if (event.type === 'payment_intent.payment_failed') {
+      const intent = event.data.object;
+      const bookingId = intent.metadata?.bookingId;
+      if (!bookingId) return res.json({ received: true });
+
+      await prisma.transaction.updateMany({
+        where: { stripePaymentIntent: intent.id },
+        data: { paymentStatus: 'FAILED' }
+      });
+      // Best-effort — booking may not exist in edge cases
+      await prisma.booking.updateMany({
+        where: { id: bookingId, paymentStatus: { not: 'PAID' } },
+        data: { paymentStatus: 'FAILED' }
+      });
+    }
+
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object;
+      const { packageId, userId } = session.metadata || {};
+
+      if (packageId && userId) {
+        // Idempotency — stripeSessionId is unique in DB
+        const existing = await prisma.packagePurchase.findUnique({
+          where: { stripeSessionId: session.id }
+        });
+
+        if (!existing) {
+          const ridesMap = {
+            PACKAGE_2: { rides: 2, name: '2 Rides / Month' },
+            PACKAGE_4: { rides: 4, name: '4 Rides / Month' },
+            PACKAGE_6: { rides: 6, name: '6 Rides / Month' },
+            PACKAGE_8: { rides: 8, name: '8 Rides / Month' }
+          };
+          const pkg = ridesMap[packageId];
+
+          if (pkg) {
+            const expiration = new Date();
+            expiration.setDate(expiration.getDate() + 30);
+
+            await prisma.packagePurchase.create({
+              data: {
+                userId,
+                packageId,
+                packageName: pkg.name,
+                totalRides: pkg.rides,
+                remainingRides: pkg.rides,
+                expirationDate: expiration,
+                paymentStatus: 'PAID',
+                stripeSessionId: session.id
+              }
+            });
+          }
+        }
+      }
+    }
+
+    res.json({ received: true });
+  } catch (err) {
+    // Return 500 so Stripe retries the webhook
+    console.error('[webhook] Handler error:', err.message);
+    next(err);
+  }
+}
+
+module.exports = { createPaymentIntent, handleWebhook };

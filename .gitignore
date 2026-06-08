@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+
+# Environment files — NEVER commit these
+.env
+.env.local
+.env.production
+backend/.env
+backend/.env.local
+
+# VPS bootstrap scripts contain production secrets — never commit
+scripts/setup-vps-env.sh
+
+# SQLite local database
+backend/prisma/dev.db
+backend/prisma/dev.db-journal
+
+# PM2 logs
+logs/
+
+# OS
+.DS_Store
+Thumbs.db
