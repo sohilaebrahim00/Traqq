@@ -104,11 +104,11 @@ export default function contact(root) {
               <p>For urgent booking questions, please reach out using the support details below.</p>
               <div class="contact-assist-detail">
                 <span class="contact-assist-label">Email</span>
-                <span class="contact-assist-val"><a href="mailto:support@traqq.com">support@traqq.com</a></span>
+                <span class="contact-assist-val"><a href="mailto:support@mytraqq.com">support@mytraqq.com</a></span>
               </div>
               <div class="contact-assist-detail">
                 <span class="contact-assist-label">Phone</span>
-                <span class="contact-assist-val">+1 (000) 000-0000</span>
+                <span class="contact-assist-val"><a href="tel:6823903071">682-390-3071</a></span>
               </div>
               <div class="contact-assist-detail">
                 <span class="contact-assist-label">Address</span>

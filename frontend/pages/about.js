@@ -60,7 +60,7 @@ export default function about(root) {
         </div>
 
         <div class="about-values">
-          <h2>Our Brand Values</h2>
+          <h2 class="gradient-heading">Our Brand Values</h2>
           <div class="values-grid">
             <div class="value-card reveal-up">
               <div class="value-icon"><i data-lucide="clock" class="icon-md"></i></div>

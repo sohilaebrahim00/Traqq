@@ -43,7 +43,7 @@ export default function home(root) {
     <section class="home-section">
       <div class="container">
         <p class="section-tag">Our Services</p>
-        <h2 class="section-title">Private Airport Transportation,<br/>Designed Around You</h2>
+        <h2 class="section-title gradient-heading">Private Airport Transportation,<br/>Designed Around You</h2>
         <div class="service-cards-grid">
           <div class="service-card reveal">
             <div class="service-card-icon"><i data-lucide="door-open" class="icon-lg"></i></div>
@@ -229,7 +229,7 @@ export default function home(root) {
     <section class="home-section">
       <div class="container">
         <p class="section-tag">Common Questions</p>
-        <h2 class="section-title">Quick Answers</h2>
+        <h2 class="section-title gradient-heading">Quick Answers</h2>
         <div class="faq-preview-list">
           <div class="faq-preview-item reveal">
             <span class="faq-num">01</span>
@@ -259,7 +259,7 @@ export default function home(root) {
 
     <!-- ── FINAL CTA ── -->
     <section class="final-cta reveal">
-      <h2>Ready for a smoother airport ride?</h2>
+      <h2 class="gradient-heading">Ready for a smoother airport ride?</h2>
       <p>Book your private DFW shuttle today for one flat rate — no surprises, no sharing.</p>
       <div class="final-cta-actions">
         <a class="btn btn-primary btn-lg" data-link="/booking" href="/booking">Book Now — $99</a>

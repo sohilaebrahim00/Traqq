@@ -13,7 +13,10 @@ export function renderFooter(root) {
           <a class="btn btn-primary" data-link="/booking" href="/booking" style="margin-top:1.25rem;">Book a Ride</a>
           <div class="footer-contact-block">
             <div class="footer-contact-item">
-              <a href="mailto:support@traqq.com">support@traqq.com</a>
+              <a href="mailto:support@mytraqq.com">support@mytraqq.com</a>
+            </div>
+            <div class="footer-contact-item">
+              <a href="tel:6823903071">682-390-3071</a>
             </div>
             <div class="footer-contact-item">5860 Collin McKinney Pkwy, Suite 605</div>
             <div class="footer-contact-item">McKinney, TX 75070</div>
