@@ -1,5 +1,6 @@
 import { adminLayout } from '../utils/adminLayout.js';
 import { api } from '../services/api.js';
+import { escapeHtml } from '../utils/auth.js';
 
 function fmtDate(d) {
   return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -67,7 +68,7 @@ export default async function adminCustomers(root, { isActive } = {}) {
         };
       }
       map[key].bookings++;
-      if (b.paymentStatus === 'PAID') { map[key].paid++; map[key].totalSpend += 99; }
+      if (b.paymentStatus === 'PAID') { map[key].paid++; map[key].totalSpend += Number(b.price || 0); }
       map[key].lastPayStatus = b.paymentStatus;
       const d = new Date(b.createdAt);
       if (!map[key].lastBooking || d > new Date(map[key].lastBooking)) {
@@ -113,12 +114,12 @@ export default async function adminCustomers(root, { isActive } = {}) {
           <tbody>
             ${list.map(c => `
               <tr>
-                <td>${c.name}</td>
-                <td style="white-space:nowrap;">${c.phone}</td>
-                <td>${c.email}</td>
+                <td>${escapeHtml(c.name)}</td>
+                <td style="white-space:nowrap;">${escapeHtml(c.phone)}</td>
+                <td>${escapeHtml(c.email)}</td>
                 <td style="text-align:center;">${c.bookings}</td>
                 <td style="text-align:center;">${c.paid}</td>
-                <td class="price-gold">$${c.totalSpend.toLocaleString()}</td>
+                <td class="price-gold">$${c.totalSpend.toFixed(2)}</td>
                 <td style="white-space:nowrap;">${fmtDate(c.lastBooking)}</td>
                 <td>${payBadge(c.lastPayStatus)}</td>
               </tr>`).join('')}

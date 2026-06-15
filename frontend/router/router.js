@@ -17,6 +17,7 @@ const routes = {
   '/admin/payments': () => import('../pages/adminPayments.js'),
   '/admin/analytics': () => import('../pages/adminAnalytics.js'),
   '/admin/settings': () => import('../pages/adminSettings.js'),
+  '/admin/promos': () => import('../pages/adminPromos.js'),
   '/about': () => import('../pages/about.js'),
   '/how-it-works': () => import('../pages/howItWorks.js'),
   '/contact': () => import('../pages/contact.js'),
@@ -37,7 +38,8 @@ const routes = {
 
 const ADMIN_ROUTES = [
   '/admin', '/admin/bookings', '/admin/booking-details',
-  '/admin/customers', '/admin/drivers', '/admin/payments', '/admin/analytics', '/admin/settings'
+  '/admin/customers', '/admin/drivers', '/admin/payments', '/admin/analytics', '/admin/settings',
+  '/admin/promos'
 ];
 
 const DRIVER_ROUTES = [

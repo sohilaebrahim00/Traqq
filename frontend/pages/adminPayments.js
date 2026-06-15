@@ -1,5 +1,6 @@
 import { adminLayout } from '../utils/adminLayout.js';
 import { api } from '../services/api.js';
+import { escapeHtml } from '../utils/auth.js';
 
 function fmtDateTime(d) {
   return d ? new Date(d).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
@@ -87,9 +88,9 @@ export default async function adminPayments(root, { isActive } = {}) {
           <tbody>
             ${list.map(b => `
               <tr>
-                <td><span class="booking-ref-sm">TRQ-${b.id.slice(-8).toUpperCase()}</span></td>
-                <td style="white-space:nowrap;">${b.phoneNumber}</td>
-                <td class="price-gold">$99.00</td>
+                <td><span class="booking-ref-sm">${escapeHtml(b.bookingRef || ('TRQ-'+b.id.slice(-8).toUpperCase()))}</span></td>
+                <td style="white-space:nowrap;">${escapeHtml(b.phoneNumber)}</td>
+                <td class="price-gold">$${Number(b.price || 99).toFixed(2)}</td>
                 <td style="text-transform:uppercase;font-size:0.78rem;">USD</td>
                 <td>${payBadge(b.paymentStatus)}</td>
                 <td>${statusBadge(b.bookingStatus)}</td>
@@ -119,7 +120,7 @@ export default async function adminPayments(root, { isActive } = {}) {
     const unpaid   = bookings.filter(b => b.paymentStatus === 'UNPAID');
     const failed   = bookings.filter(b => b.paymentStatus === 'FAILED');
     const refunded = bookings.filter(b => b.paymentStatus === 'REFUNDED');
-    const revenue  = paid.length * 99;
+    const revenue  = paid.reduce((sum, b) => sum + Number(b.price || 0), 0);
 
     root.querySelector('#pay-stats').innerHTML = `
       <div class="stat-card">

@@ -4,18 +4,41 @@ const QRCode = require('qrcode');
 const crypto = require('crypto');
 
 const bookingSchema = z.object({
-  tripDirection: z.enum(['TO_DFW', 'FROM_DFW']),
-  pickupDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Date must be in YYYY-MM-DD format'),
-  pickupTime: z.string().regex(/^\d{1,2}:(00|30)$/, 'Time must be a half-hour slot e.g. 9:00 or 14:30'),
-  pickupAddress: z.string().min(5),
-  passengerCount: z.number().int().min(1).max(6),
-  carryOnCount: z.number().int().min(0).default(0),
-  checkedLuggageCount: z.number().int().min(0).default(0),
-  dropoffTerminal: z.enum(['A', 'B', 'C', 'D', 'E']),
+  tripDirection: z.enum(['TO_DFW', 'FROM_DFW'], {
+    errorMap: () => ({ message: 'Please select a valid trip direction (To DFW or From DFW).' })
+  }),
+  pickupDate: z.string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Please choose a valid pickup date.')
+    .refine(
+      v => isValidCalendarDate(v),
+      v => ({ message: calendarDateError(v) || 'Please choose a valid pickup date.' })
+    ),
+  pickupTime: z.string().regex(/^\d{1,2}:(00|30)$/, 'Please choose a valid pickup time (half-hour slots only, e.g. 9:00 or 14:30).'),
+  pickupAddress: z.string().min(5, 'Please select a valid pickup address.'),
+  pickupLatitude: z.number({ invalid_type_error: 'Pickup latitude must be a valid number.' }).optional(),
+  pickupLongitude: z.number({ invalid_type_error: 'Pickup longitude must be a valid number.' }).optional(),
+  pickupPlaceId: z.string().optional(),
+  destinationAddress: z.string().optional(),
+  destinationLatitude: z.number({ invalid_type_error: 'Destination latitude must be a valid number.' }).optional(),
+  destinationLongitude: z.number({ invalid_type_error: 'Destination longitude must be a valid number.' }).optional(),
+  destinationPlaceId: z.string().optional(),
+  passengerCount: z.number({
+    invalid_type_error: 'Please enter a valid passenger count.',
+    required_error: 'Passenger count is required.'
+  }).int('Passenger count must be a whole number.').min(1, 'At least 1 passenger is required.').max(6, 'Maximum 6 passengers per ride.'),
+  carryOnCount: z.number({
+    invalid_type_error: 'Please enter a valid carry-on bag count.'
+  }).int('Carry-on bag count must be a whole number.').min(0, 'Carry-on bag count cannot be negative.').default(0),
+  checkedLuggageCount: z.number({
+    invalid_type_error: 'Please enter a valid checked luggage count.'
+  }).int('Checked luggage count must be a whole number.').min(0, 'Checked luggage count cannot be negative.').default(0),
+  dropoffTerminal: z.enum(['A', 'B', 'C', 'D', 'E'], {
+    errorMap: () => ({ message: 'Please select a valid terminal (A, B, C, D, or E).' })
+  }),
   airline: z.string().optional(),
   departureTime: z.string().optional(),
-  phoneNumber: z.string().min(10),
-  email: z.string().email().optional()
+  phoneNumber: z.string().min(10, 'Phone number must contain at least 10 digits.'),
+  email: z.string().email('Please enter a valid email address.').optional()
 });
 
 function generateAllSlots() {
@@ -36,12 +59,28 @@ function parseDateUTC(dateStr) {
 
 function isValidCalendarDate(dateStr) {
   const [y, m, d] = dateStr.split('-').map(Number);
-  if (y < 1000 || y > 9999) return false;
+  const currentYear = new Date().getUTCFullYear();
+  if (y < currentYear || y > currentYear + 10) return false;
   if (m < 1 || m > 12) return false;
   if (d < 1 || d > 31) return false;
-  // Use Date to catch invalid combos like Feb 30, Apr 31 etc.
+  // Catches impossible combos: Feb 30/31, Apr/Jun/Sep/Nov 31, etc.
   const date = new Date(Date.UTC(y, m - 1, d));
   return date.getUTCFullYear() === y && date.getUTCMonth() === m - 1 && date.getUTCDate() === d;
+}
+
+function calendarDateError(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const currentYear = new Date().getUTCFullYear();
+  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  if (y < currentYear) return `Year ${y} is in the past. Please select ${currentYear} or a later year.`;
+  if (y > currentYear + 10) return 'Please select a date within the next 10 years.';
+  if (m < 1 || m > 12) return `"${m}" is not a valid month. Month must be between 1 and 12.`;
+  if (d < 1 || d > 31) return `"${d}" is not a valid day. Day must be between 1 and 31.`;
+  const date = new Date(Date.UTC(y, m - 1, d));
+  if (date.getUTCFullYear() !== y || date.getUTCMonth() !== m - 1 || date.getUTCDate() !== d) {
+    return `${MONTHS[m - 1]} ${y} does not have ${d} days.`;
+  }
+  return null;
 }
 
 async function findActiveBookingForSlot(pickupDateObj, pickupTime) {
@@ -65,8 +104,9 @@ async function getAvailability(req, res, next) {
       return res.status(400).json({ success: false, error: 'Please provide a valid date in YYYY-MM-DD format.' });
     }
 
-    if (!isValidCalendarDate(date)) {
-      return res.status(400).json({ success: false, error: 'Please select a valid pickup date.' });
+    const dateErr = calendarDateError(date);
+    if (dateErr) {
+      return res.status(400).json({ success: false, error: dateErr });
     }
 
     const pickupDateObj = parseDateUTC(date);
@@ -95,11 +135,6 @@ async function getAvailability(req, res, next) {
 async function createBooking(req, res, next) {
   try {
     const data = bookingSchema.parse(req.body);
-
-    // Validate calendar date
-    if (!isValidCalendarDate(data.pickupDate)) {
-      return res.status(400).json({ success: false, error: 'Please select a valid pickup date.' });
-    }
 
     const pickupDateObj = parseDateUTC(data.pickupDate);
 
@@ -143,11 +178,14 @@ async function getBooking(req, res, next) {
       where: { id: req.params.id },
       select: {
         id: true, bookingRef: true, pickupDate: true, pickupTime: true,
-        pickupAddress: true, passengerCount: true, carryOnCount: true,
+        pickupAddress: true, pickupLatitude: true, pickupLongitude: true,
+        destinationAddress: true,
+        passengerCount: true, carryOnCount: true,
         checkedLuggageCount: true, tripDirection: true, dropoffTerminal: true,
         airline: true, departureTime: true, phoneNumber: true, email: true,
         bookingStatus: true, rideStatus: true, paymentStatus: true,
-        price: true, qrCode: true, createdAt: true, updatedAt: true,
+        price: true, promoCode: true, discountAmount: true,
+        qrCode: true, createdAt: true, updatedAt: true,
         // Never return password hash or internal userId — safe subset only
         user:   { select: { fullName: true, email: true } },
         driver: { select: {
@@ -214,13 +252,13 @@ async function getAllBookings(req, res, next) {
   try {
     const raw = await prisma.booking.findMany({
       select: {
-        id: true, pickupDate: true, pickupTime: true, pickupAddress: true,
+        id: true, bookingRef: true, pickupDate: true, pickupTime: true, pickupAddress: true,
         passengerCount: true, carryOnCount: true, checkedLuggageCount: true,
         tripDirection: true, dropoffTerminal: true, airline: true,
         departureTime: true, phoneNumber: true, email: true,
         bookingStatus: true, paymentStatus: true, price: true,
+        promoCode: true, discountAmount: true,
         userId: true, createdAt: true, updatedAt: true,
-        // Return boolean instead of full base64 data URL — qrCode can be 20-50 KB per booking
         qrCode: true,
         transaction: {
           select: { id: true, stripePaymentIntent: true, amount: true, currency: true, paymentStatus: true }

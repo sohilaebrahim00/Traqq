@@ -7,6 +7,7 @@ const {
   getDrivers,
   assignDriver
 } = require('../controllers/admin.controller');
+const { getPromoUsage } = require('../controllers/promo.controller');
 
 // All admin routes require admin authentication
 router.use(authenticate, requireAdmin);
@@ -17,5 +18,7 @@ router.patch('/bookings/:id/status', updateBookingStatus);
 router.post('/drivers', createDriver);
 router.get('/drivers', getDrivers);
 router.patch('/bookings/:id/assign', assignDriver);
+
+router.get('/promo/usage', getPromoUsage);
 
 module.exports = router;

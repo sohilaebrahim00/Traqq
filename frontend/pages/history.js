@@ -1,5 +1,5 @@
 import { api } from '../services/api.js';
-import { getToken, getLocalBookings } from '../utils/auth.js';
+import { getToken, getLocalBookings, escapeHtml } from '../utils/auth.js';
 import { navigate } from '../router/router.js';
 
 function formatDate(dateStr) {
@@ -26,11 +26,11 @@ function renderBookingCard(b) {
         <div class="booking-card-grid">
           <div>
             <p class="booking-card-label">Pickup Time</p>
-            <p>${b.pickupTime || '—'}</p>
+            <p>${escapeHtml(b.pickupTime || '—')}</p>
           </div>
           <div>
             <p class="booking-card-label">Terminal</p>
-            <p>DFW Terminal ${b.dropoffTerminal || '—'}</p>
+            <p>DFW Terminal ${escapeHtml(b.dropoffTerminal || '—')}</p>
           </div>
           <div>
             <p class="booking-card-label">Passengers</p>
@@ -43,7 +43,7 @@ function renderBookingCard(b) {
         </div>
       </div>
       <div class="booking-card-footer">
-        <span class="price-gold">$99.00</span>
+        <span class="price-gold">$${Number(b.price || 99).toFixed(2)}</span>
         <div style="display:flex;gap:0.5rem;">
           <a class="btn btn-ghost btn-sm" data-link="/booking-details?id=${b.id}" href="/booking-details?id=${b.id}">View Details</a>
           ${b.qrCode ? `<button class="btn btn-ghost btn-sm" onclick="window.open('${b.qrCode}')">QR Code</button>` : ''}

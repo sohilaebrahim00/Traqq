@@ -1,4 +1,4 @@
-import { getUser, isAdmin } from './auth.js';
+import { getUser, isAdmin, escapeHtml } from './auth.js';
 
 // Returns true when the full admin layout was rendered.
 // Returns false when the auth-guard page was rendered instead.
@@ -28,7 +28,7 @@ export function adminLayout(root, { title, active, bodyHTML }) {
           <i data-lucide="shield-x" class="icon-xl" style="color:#ff5f5f;margin-bottom:1.25rem;display:block;"></i>
           <h2 style="color:var(--white);">Access Denied</h2>
           <p style="color:var(--white-muted);margin-bottom:0.5rem;">
-            Signed in as <strong style="color:var(--white);">${user.email || user.fullName}</strong>
+            Signed in as <strong style="color:var(--white);">${escapeHtml(user.email || user.fullName)}</strong>
           </p>
           <p style="color:var(--white-muted);font-size:0.85rem;margin-bottom:1.75rem;">
             This account does not have admin privileges.<br>
@@ -62,6 +62,7 @@ export function adminLayout(root, { title, active, bodyHTML }) {
     { path: '/admin/drivers',     label: 'Drivers',    icon: 'car'              },
     { path: '/admin/customers',   label: 'Customers',  icon: 'users'            },
     { path: '/admin/payments',    label: 'Payments',   icon: 'credit-card'      },
+    { path: '/admin/promos',      label: 'Promo Codes', icon: 'tag'             },
     { path: '/admin/analytics',   label: 'Analytics',  icon: 'bar-chart-2'      },
     { path: '/admin/settings',    label: 'Settings',   icon: 'settings'         },
   ];
@@ -71,8 +72,8 @@ export function adminLayout(root, { title, active, bodyHTML }) {
   });
 
   const nameParts = (user.fullName || 'Admin').split(' ');
-  const initials = nameParts.map(n => n[0] || '').join('').slice(0, 2).toUpperCase() || 'A';
-  const displayName = user.fullName || 'Admin';
+  const initials = escapeHtml(nameParts.map(n => n[0] || '').join('').slice(0, 2).toUpperCase() || 'A');
+  const displayName = escapeHtml(user.fullName || 'Admin');
 
   root.innerHTML = `
     <div class="admin-layout" id="admin-layout">

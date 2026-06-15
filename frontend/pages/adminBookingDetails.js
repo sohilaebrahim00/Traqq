@@ -1,6 +1,6 @@
 import { adminLayout } from '../utils/adminLayout.js';
 import { api } from '../services/api.js';
-import { showToast } from '../utils/auth.js';
+import { showToast, escapeHtml } from '../utils/auth.js';
 
 function fmtDate(d) {
   return d ? new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -72,7 +72,7 @@ export default async function adminBookingDetails(root, { params, isActive } = {
       }
     }
 
-    const ref = 'TRQ-' + booking.id.slice(-8).toUpperCase();
+    const ref = booking.bookingRef || ('TRQ-' + booking.id.slice(-8).toUpperCase());
     const hasQR = !!booking.qrCode;
 
     root.querySelector('#detail-content').innerHTML = `
@@ -108,11 +108,11 @@ export default async function adminBookingDetails(root, { params, isActive } = {
           ${row('Booking ID', `<code style="font-size:0.72rem;color:var(--white-muted);">${booking.id}</code>`)}
           ${row('Trip Direction', booking.tripDirection === 'FROM_DFW' ? '← From DFW' : '→ To DFW')}
           ${row('Pickup Date', fmtDate(booking.pickupDate))}
-          ${row('Pickup Time', booking.pickupTime)}
-          ${row('Pickup Address', booking.pickupAddress)}
-          ${row('DFW Terminal', `DFW Terminal ${booking.dropoffTerminal}`)}
-          ${booking.airline ? row('Airline', booking.airline) : ''}
-          ${booking.departureTime ? row('Flight Departure', booking.departureTime) : ''}
+          ${row('Pickup Time', escapeHtml(booking.pickupTime))}
+          ${row('Pickup Address', escapeHtml(booking.pickupAddress))}
+          ${row('DFW Terminal', `DFW Terminal ${escapeHtml(booking.dropoffTerminal)}`)}
+          ${booking.airline ? row('Airline', escapeHtml(booking.airline)) : ''}
+          ${booking.departureTime ? row('Flight Departure', escapeHtml(booking.departureTime)) : ''}
           ${row('Created', fmtDateTime(booking.createdAt))}
         </div>
 
@@ -121,9 +121,9 @@ export default async function adminBookingDetails(root, { params, isActive } = {
           <p class="admin-detail-card-title">
             <i data-lucide="user" class="icon-xs"></i> Customer
           </p>
-          ${row('Full Name', booking.user?.fullName || '—')}
-          ${row('Phone', booking.phoneNumber)}
-          ${row('Email', booking.email || booking.user?.email || '—')}
+          ${row('Full Name', escapeHtml(booking.user?.fullName || '—'))}
+          ${row('Phone', escapeHtml(booking.phoneNumber))}
+          ${row('Email', escapeHtml(booking.email || booking.user?.email || '—'))}
           <br>
           <p class="admin-detail-card-title" style="margin-top:1rem;">
             <i data-lucide="users" class="icon-xs"></i> Passengers & Luggage
@@ -138,7 +138,8 @@ export default async function adminBookingDetails(root, { params, isActive } = {
           <p class="admin-detail-card-title">
             <i data-lucide="credit-card" class="icon-xs"></i> Payment
           </p>
-          ${row('Amount', '<span style="color:var(--gold);font-weight:700;">$99.00 USD</span>')}
+          ${row('Amount', `<span style="color:var(--gold);font-weight:700;">$${Number(booking.price || 99).toFixed(2)} USD</span>`)}
+          ${Number(booking.discountAmount) > 0 ? row('Promo Discount', `<span style="color:#4caf50;">−$${Number(booking.discountAmount).toFixed(2)} (code: ${escapeHtml(booking.promoCode || '—')})</span>`) : ''}
           ${row('Payment Status', payBadge(booking.paymentStatus))}
           ${row('Booking Status', statusBadge(booking.bookingStatus))}
           ${booking.transaction?.stripePaymentIntent
@@ -178,17 +179,17 @@ export default async function adminBookingDetails(root, { params, isActive } = {
           ${booking.driver ? `
             <div style="display:flex; align-items:center; gap:1rem; margin-bottom:1rem; padding-bottom:1rem; border-bottom:1px solid var(--border);">
               <div style="width:40px;height:40px;border-radius:50%;background:var(--gold-dim);color:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:600;overflow:hidden;">
-                ${booking.driver.profilePhoto 
-                  ? `<img src="${booking.driver.profilePhoto}" style="width:100%;height:100%;object-fit:cover;">`
-                  : booking.driver.user?.fullName?.charAt(0) || 'D'}
+                ${booking.driver.profilePhoto
+                  ? `<img src="${escapeHtml(booking.driver.profilePhoto)}" style="width:100%;height:100%;object-fit:cover;">`
+                  : escapeHtml(booking.driver.user?.fullName?.charAt(0) || 'D')}
               </div>
               <div>
-                <p style="color:var(--white);font-weight:600;">${booking.driver.user?.fullName || 'Assigned Driver'}</p>
-                <p style="font-size:0.8rem;color:var(--white-muted);">${booking.driver.user?.phoneNumber || ''}</p>
+                <p style="color:var(--white);font-weight:600;">${escapeHtml(booking.driver.user?.fullName || 'Assigned Driver')}</p>
+                <p style="font-size:0.8rem;color:var(--white-muted);">${escapeHtml(booking.driver.user?.phoneNumber || '')}</p>
               </div>
             </div>
-            ${row('Vehicle', `${booking.driver.vehicleColor} ${booking.driver.vehicleMake} ${booking.driver.vehicleModel}`)}
-            ${row('License Plate', `<span style="color:var(--gold);font-family:monospace;">${booking.driver.vehiclePlate}</span>`)}
+            ${row('Vehicle', `${escapeHtml(booking.driver.vehicleColor)} ${escapeHtml(booking.driver.vehicleMake)} ${escapeHtml(booking.driver.vehicleModel)}`)}
+            ${row('License Plate', `<span style="color:var(--gold);font-family:monospace;">${escapeHtml(booking.driver.vehiclePlate)}</span>`)}
             ${row('Ride Status', `<span class="status-badge status-confirmed">${booking.rideStatus}</span>`)}
           ` : availableDrivers.length > 0 ? `
             <div style="margin-top:0.5rem;">
@@ -196,7 +197,7 @@ export default async function adminBookingDetails(root, { params, isActive } = {
               <div style="display:flex; gap:0.5rem;">
                 <select id="assign-driver-select" class="form-input" style="flex:1;">
                   <option value="">-- Select Driver --</option>
-                  ${availableDrivers.map(d => `<option value="${d.id}">${d.fullName} (${d.vehicleMake} ${d.vehicleModel})</option>`).join('')}
+                  ${availableDrivers.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.fullName)} (${escapeHtml(d.vehicleMake)} ${escapeHtml(d.vehicleModel)})</option>`).join('')}
                 </select>
                 <button class="btn btn-primary" id="btn-assign-driver" type="button" style="white-space:nowrap;">Assign</button>
               </div>

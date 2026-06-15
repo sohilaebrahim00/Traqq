@@ -1,6 +1,6 @@
 import { api } from '../services/api.js';
 import { navigate } from '../router/router.js';
-import { getUser } from '../utils/auth.js';
+import { getUser, escapeHtml } from '../utils/auth.js';
 
 function fmtDate(d) {
   if (!d) return '—';
@@ -83,7 +83,7 @@ function renderBookingCard(b) {
     <a class="ds-ride-card ${isToday ? 'ds-ride-card--today' : ''}"
        data-link="/driver/bookings/${b.id}" href="/driver/bookings/${b.id}">
       <div class="ds-ride-card-header">
-        <span class="ds-ride-ref">${b.bookingRef || `TRQ-${b.id.slice(-8).toUpperCase()}`}</span>
+        <span class="ds-ride-ref">${escapeHtml(b.bookingRef || `TRQ-${b.id.slice(-8).toUpperCase()}`)}</span>
         <span class="${rideStatusClass(b.rideStatus)}">${rideStatusLabel(b.rideStatus)}</span>
       </div>
       <div class="ds-ride-card-body">
@@ -93,11 +93,11 @@ function renderBookingCard(b) {
         </div>
         <div class="ds-ride-detail">
           <span class="ds-ride-icon"><i data-lucide="map-pin" class="icon-xs"></i></span>
-          <span>${b.pickupAddress}</span>
+          <span>${escapeHtml(b.pickupAddress)}</span>
         </div>
         <div class="ds-ride-detail">
           <span class="ds-ride-icon"><i data-lucide="plane" class="icon-xs"></i></span>
-          <span>${tripDirection(b.tripDirection)} · Terminal ${b.dropoffTerminal}</span>
+          <span>${tripDirection(b.tripDirection)} · Terminal ${escapeHtml(b.dropoffTerminal)}</span>
         </div>
         <div class="ds-ride-detail">
           <span class="ds-ride-icon"><i data-lucide="users" class="icon-xs"></i></span>

@@ -3,6 +3,9 @@ generator client {
 }
 
 datasource db {
+  // Always "postgresql" — matches migration_lock.toml.
+  // Local dev: use a local PostgreSQL instance (see backend/.env.example).
+  // Quick local setup: docker run -d --name traqq-db -e POSTGRES_PASSWORD=dev -p 5432:5432 postgres:15
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
@@ -20,6 +23,7 @@ model User {
   bookings         Booking[]
   driverProfile    DriverProfile?
   packagePurchases PackagePurchase[]
+  promoCodeUses    PromoCodeUse[]
 
   @@map("users")
 }
@@ -47,10 +51,17 @@ model DriverProfile {
 
 model Booking {
   id                  String        @id @default(cuid())
-  bookingRef          String        @unique // Format: TRQ-XXXXXXXX
+  bookingRef          String        @unique
   pickupDate          DateTime
   pickupTime          String
   pickupAddress       String
+  pickupLatitude      Float?
+  pickupLongitude     Float?
+  pickupPlaceId       String?
+  destinationAddress  String?
+  destinationLatitude Float?
+  destinationLongitude Float?
+  destinationPlaceId  String?
   passengerCount      Int
   carryOnCount        Int           @default(0)
   checkedLuggageCount Int           @default(0)
@@ -64,23 +75,26 @@ model Booking {
   rideStatus          String        @default("UNASSIGNED")
   paymentStatus       String        @default("UNPAID")
   price               Decimal       @default(99.00)
+  promoCode           String?
+  discountAmount      Decimal       @default(0)
   qrHash              String        @unique
-  qrCode              String?       // Base64 data URL
-  
+  qrCode              String?
+
   userId              String?
   user                User?         @relation(fields: [userId], references: [id])
-  
+
   driverId            String?
   driver              DriverProfile? @relation(fields: [driverId], references: [id])
-  
+
   transaction         Transaction?
+  promoCodeUse        PromoCodeUse?
 
   assignedAt          DateTime?
   driverStartedAt     DateTime?
   driverArrivedAt     DateTime?
   passengerPickedUpAt DateTime?
   completedAt         DateTime?
-  
+
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
@@ -123,4 +137,35 @@ model PackagePurchase {
   @@index([userId])
   @@index([paymentStatus])
   @@map("package_purchases")
+}
+
+model PromoCode {
+  id            String         @id @default(cuid())
+  code          String         @unique
+  discountPct   Int
+  description   String
+  isActive      Boolean        @default(true)
+  firstRideOnly Boolean        @default(true)
+  maxUses       Int?
+  createdAt     DateTime       @default(now())
+  uses          PromoCodeUse[]
+
+  @@map("promo_codes")
+}
+
+model PromoCodeUse {
+  id             String    @id @default(cuid())
+  promoCodeId    String
+  promoCode      PromoCode @relation(fields: [promoCodeId], references: [id])
+  userId         String?
+  user           User?     @relation(fields: [userId], references: [id])
+  phoneNumber    String?
+  bookingId      String    @unique
+  booking        Booking   @relation(fields: [bookingId], references: [id])
+  discountAmount Decimal
+  usedAt         DateTime  @default(now())
+
+  @@index([promoCodeId])
+  @@index([userId])
+  @@map("promo_code_uses")
 }

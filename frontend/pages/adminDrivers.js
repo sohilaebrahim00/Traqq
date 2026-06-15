@@ -1,6 +1,6 @@
 import { adminLayout } from '../utils/adminLayout.js';
 import { api } from '../services/api.js';
-import { showToast } from '../utils/auth.js';
+import { showToast, escapeHtml } from '../utils/auth.js';
 
 export default async function adminDrivers(root, { isActive }) {
   const rendered = adminLayout(root, {
@@ -174,13 +174,13 @@ export default async function adminDrivers(root, { isActive }) {
               <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:1.5rem;">
                 <div style="display:flex; align-items:center; gap:1rem;">
                   <div style="width:48px;height:48px;border-radius:50%;background:var(--gold-dim);color:var(--gold);display:flex;align-items:center;justify-content:center;font-weight:600;font-size:1.1rem;overflow:hidden;">
-                    ${d.profilePhoto 
-                      ? `<img src="${d.profilePhoto}" style="width:100%;height:100%;object-fit:cover;" alt="Avatar">` 
-                      : d.fullName.charAt(0)}
+                    ${d.profilePhoto
+                      ? `<img src="${escapeHtml(d.profilePhoto)}" style="width:100%;height:100%;object-fit:cover;" alt="Avatar">`
+                      : escapeHtml(d.fullName.charAt(0))}
                   </div>
                   <div>
-                    <h3 style="font-size:1.1rem;color:var(--white);margin-bottom:0.1rem;">${d.fullName}</h3>
-                    <p style="font-size:0.85rem;color:var(--white-muted);">${d.phoneNumber}</p>
+                    <h3 style="font-size:1.1rem;color:var(--white);margin-bottom:0.1rem;">${escapeHtml(d.fullName)}</h3>
+                    <p style="font-size:0.85rem;color:var(--white-muted);">${escapeHtml(d.phoneNumber)}</p>
                   </div>
                 </div>
                 <span class="status-badge ${d.isAvailable ? 'status-confirmed' : 'status-cancelled'}" style="font-size:0.7rem;padding:0.2rem 0.5rem;">
@@ -193,17 +193,17 @@ export default async function adminDrivers(root, { isActive }) {
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.75rem;">
                   <div>
                     <p style="font-size:0.75rem; color:var(--white-muted);">Make/Model</p>
-                    <p style="font-size:0.9rem; color:var(--white);">${d.vehicleColor} ${d.vehicleMake} ${d.vehicleModel}</p>
+                    <p style="font-size:0.9rem; color:var(--white);">${escapeHtml(d.vehicleColor)} ${escapeHtml(d.vehicleMake)} ${escapeHtml(d.vehicleModel)}</p>
                   </div>
                   <div>
                     <p style="font-size:0.75rem; color:var(--white-muted);">License Plate</p>
-                    <p style="font-size:0.9rem; color:var(--gold); font-family:monospace;">${d.vehiclePlate}</p>
+                    <p style="font-size:0.9rem; color:var(--gold); font-family:monospace;">${escapeHtml(d.vehiclePlate)}</p>
                   </div>
                 </div>
               </div>
               <div style="margin-top:1.25rem;">
-                <p style="font-size:0.8rem; color:var(--white-muted);"><i data-lucide="mail" class="icon-xs" style="vertical-align:-2px;margin-right:0.2rem;"></i> ${d.email}</p>
-                <p style="font-size:0.8rem; color:var(--white-muted); margin-top:0.4rem;"><i data-lucide="credit-card" class="icon-xs" style="vertical-align:-2px;margin-right:0.2rem;"></i> License: ${d.licenseNumber}</p>
+                <p style="font-size:0.8rem; color:var(--white-muted);"><i data-lucide="mail" class="icon-xs" style="vertical-align:-2px;margin-right:0.2rem;"></i> ${escapeHtml(d.email)}</p>
+                <p style="font-size:0.8rem; color:var(--white-muted); margin-top:0.4rem;"><i data-lucide="credit-card" class="icon-xs" style="vertical-align:-2px;margin-right:0.2rem;"></i> License: ${escapeHtml(d.licenseNumber)}</p>
               </div>
             </div>
           `).join('')}

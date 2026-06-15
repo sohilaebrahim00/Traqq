@@ -1,9 +1,41 @@
 const prisma = require('../config/prisma');
 const { generateQR } = require('./booking.controller');
 
+let _stripeInstance = null;
 function getStripe() {
   if (!process.env.STRIPE_RESTRICTED_KEY) return null;
-  return require('stripe')(process.env.STRIPE_RESTRICTED_KEY);
+  if (!_stripeInstance) {
+    _stripeInstance = require('stripe')(process.env.STRIPE_RESTRICTED_KEY);
+  }
+  return _stripeInstance;
+}
+
+function handleStripeError(err, res) {
+  const type = err.type || '';
+  console.error('[stripe]', type, err.message);
+  if (type === 'StripeAuthenticationError') {
+    return res.status(503).json({ error: 'Stripe authentication failed. The API key may be invalid.' });
+  }
+  if (type === 'StripePermissionError') {
+    return res.status(503).json({ error: 'Stripe key lacks required permissions (Payment Intents: write). Please update the restricted key in the Stripe Dashboard.' });
+  }
+  if (type === 'StripeConnectionError') {
+    return res.status(503).json({ error: 'Cannot connect to Stripe. Check your internet connection.' });
+  }
+  if (type === 'StripeCardError') {
+    return res.status(402).json({ error: err.message || 'Your card was declined.' });
+  }
+  if (type === 'StripeRateLimitError') {
+    return res.status(429).json({ error: 'Too many requests to Stripe. Please try again in a moment.' });
+  }
+  if (type === 'StripeInvalidRequestError') {
+    return res.status(400).json({ error: err.message || 'Invalid payment request.' });
+  }
+  // Generic Stripe error — return 402 (payment required) with message instead of 500
+  if (type && type.startsWith('Stripe')) {
+    return res.status(402).json({ error: err.message || 'Payment processing failed. Please try again.' });
+  }
+  return null; // not a Stripe error — let caller use next(err)
 }
 
 async function createPaymentIntent(req, res, next) {
@@ -19,7 +51,13 @@ async function createPaymentIntent(req, res, next) {
     const booking = await prisma.booking.findUnique({ where: { id: bookingId } });
     if (!booking) return res.status(404).json({ error: 'Booking not found' });
 
-    // Use the stored booking price, not a hardcoded value
+    // If an authenticated user is making this request, verify they own the booking.
+    // Guests (no req.user) may pay for any booking they know the ID of (guest flow).
+    if (req.user && booking.userId && booking.userId !== req.user.id) {
+      return res.status(403).json({ error: 'You do not have permission to pay for this booking.' });
+    }
+
+    // Use the stored booking price (may include promo discount)
     const amountCents = Math.round(Number(booking.price) * 100);
     if (amountCents < 50) return res.status(400).json({ error: 'Invalid booking price' });
 
@@ -29,29 +67,55 @@ async function createPaymentIntent(req, res, next) {
       if (existing.paymentStatus === 'PAID') {
         return res.status(400).json({ error: 'This booking has already been paid.' });
       }
-      // Try to reuse the existing intent
-      const existingIntent = await stripe.paymentIntents.retrieve(existing.stripePaymentIntent);
-      if (existingIntent.status !== 'canceled' && existingIntent.status !== 'succeeded') {
-        return res.json({ clientSecret: existingIntent.client_secret });
+      try {
+        const existingIntent = await stripe.paymentIntents.retrieve(existing.stripePaymentIntent);
+        if (existingIntent.status !== 'canceled' && existingIntent.status !== 'succeeded') {
+          return res.json({
+            clientSecret: existingIntent.client_secret,
+            amount: amountCents,
+            bookingRef: booking.bookingRef
+          });
+        }
+      } catch (stripeErr) {
+        const handled = handleStripeError(stripeErr, res);
+        if (handled) return;
+        return next(stripeErr);
       }
-      // Existing intent is stale — create a fresh one and update the record
-      const freshIntent = await stripe.paymentIntents.create({
-        amount: amountCents,
-        currency: 'usd',
-        metadata: { bookingId }
-      });
-      await prisma.transaction.update({
-        where: { bookingId },
-        data: { stripePaymentIntent: freshIntent.id, amount: amountCents, paymentStatus: 'UNPAID' }
-      });
-      return res.json({ clientSecret: freshIntent.client_secret });
+      // Existing intent is stale — create a fresh one
+      try {
+        const freshIntent = await stripe.paymentIntents.create({
+          amount: amountCents,
+          currency: 'usd',
+          metadata: { bookingId, bookingRef: booking.bookingRef || '' }
+        });
+        await prisma.transaction.update({
+          where: { bookingId },
+          data: { stripePaymentIntent: freshIntent.id, amount: amountCents, paymentStatus: 'UNPAID' }
+        });
+        return res.json({
+          clientSecret: freshIntent.client_secret,
+          amount: amountCents,
+          bookingRef: booking.bookingRef
+        });
+      } catch (stripeErr) {
+        const handled = handleStripeError(stripeErr, res);
+        if (handled) return;
+        return next(stripeErr);
+      }
     }
 
-    const intent = await stripe.paymentIntents.create({
-      amount: amountCents,
-      currency: 'usd',
-      metadata: { bookingId }
-    });
+    let intent;
+    try {
+      intent = await stripe.paymentIntents.create({
+        amount: amountCents,
+        currency: 'usd',
+        metadata: { bookingId, bookingRef: booking.bookingRef || '' }
+      });
+    } catch (stripeErr) {
+      const handled = handleStripeError(stripeErr, res);
+      if (handled) return;
+      return next(stripeErr);
+    }
 
     await prisma.transaction.create({
       data: {
@@ -63,7 +127,11 @@ async function createPaymentIntent(req, res, next) {
       }
     });
 
-    res.json({ clientSecret: intent.client_secret });
+    res.json({
+      clientSecret: intent.client_secret,
+      amount: amountCents,
+      bookingRef: booking.bookingRef
+    });
   } catch (err) {
     next(err);
   }

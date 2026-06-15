@@ -30,7 +30,8 @@ async function getOverview(req, res, next) {
     const [
       total, confirmed, pending, cancelled, completed,
       paid, unpaid, failed, withQR,
-      todayRides, weeklyRides, monthlyRides
+      todayRides, weeklyRides, monthlyRides,
+      revenueAgg
     ] = await Promise.all([
       prisma.booking.count(),
       prisma.booking.count({ where: { bookingStatus: 'CONFIRMED' } }),
@@ -44,6 +45,7 @@ async function getOverview(req, res, next) {
       prisma.booking.count({ where: { pickupDate: { gte: todayStart, lt: todayEnd } } }),
       prisma.booking.count({ where: { pickupDate: { gte: weekStart } } }),
       prisma.booking.count({ where: { pickupDate: { gte: monthStart } } }),
+      prisma.booking.aggregate({ where: { paymentStatus: 'PAID' }, _sum: { price: true } }),
     ]);
 
     res.json({
@@ -51,7 +53,7 @@ async function getOverview(req, res, next) {
       stats: {
         total, confirmed, pending, cancelled, completed,
         paid, unpaid, failed,
-        revenue: paid * 99,
+        revenue: Number(revenueAgg._sum.price || 0),
         withQR,
         todayRides, weeklyRides, monthlyRides
       }

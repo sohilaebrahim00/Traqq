@@ -21,6 +21,7 @@ const adminRoutes   = require('./src/routes/admin.routes');
 const driverRoutes  = require('./src/routes/driver.routes');
 const customerRoutes = require('./src/routes/customer.routes');
 const packageRoutes = require('./src/routes/package.routes');
+const promoRoutes   = require('./src/routes/promo.routes');
 const prisma        = require('./src/config/prisma');
 
 const app = express();
@@ -28,10 +29,17 @@ const PORT = process.env.PORT || 3000;
 
 const isProd = process.env.NODE_ENV === 'production';
 
+// Trust the first proxy (Nginx) so express-rate-limit and req.ip resolve correctly
+app.set('trust proxy', 1);
+
 // Always allow these production origins; also allow FRONTEND_URL from env
 const allowedOrigins = [
   'https://traqq.com',
   'https://www.traqq.com',
+  'https://traaqq.com',
+  'https://www.traaqq.com',
+  'https://mytraqq.com',
+  'https://www.mytraqq.com',
   ...(process.env.FRONTEND_URL ? [process.env.FRONTEND_URL] : []),
   ...(!isProd ? ['http://localhost:3000', 'http://localhost:5500', 'http://127.0.0.1:5500'] : [])
 ];
@@ -68,10 +76,14 @@ app.use('/api/admin',            adminRoutes);
 app.use('/api/driver',           driverRoutes);
 app.use('/api/customer/bookings', customerRoutes);
 app.use('/api/packages',         packageRoutes);
+app.use('/api/promo',            promoRoutes);
 
-// Exposes non-secret config values to the frontend (publishable key is safe to serve)
+// Exposes non-secret config values to the frontend
 app.get('/api/config', (req, res) => {
-  res.json({ stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '' });
+  res.json({
+    stripePublishableKey: process.env.STRIPE_PUBLISHABLE_KEY || '',
+    googleMapsApiKey: process.env.GOOGLE_MAPS_API_KEY || ''
+  });
 });
 
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'TRAQQ API' }));

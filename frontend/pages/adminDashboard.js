@@ -1,5 +1,6 @@
 import { adminLayout } from '../utils/adminLayout.js';
 import { api } from '../services/api.js';
+import { escapeHtml } from '../utils/auth.js';
 
 function fmtDate(d) {
   return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -147,11 +148,11 @@ export default async function adminDashboard(root, { isActive } = {}) {
               <tbody>
                 ${recent.map(b => `
                   <tr>
-                    <td><span class="booking-ref-sm">TRQ-${b.id.slice(-8).toUpperCase()}</span></td>
-                    <td>${b.user?.fullName || b.phoneNumber}</td>
+                    <td><span class="booking-ref-sm">${escapeHtml(b.bookingRef || ('TRQ-'+b.id.slice(-8).toUpperCase()))}</span></td>
+                    <td>${escapeHtml(b.user?.fullName || b.phoneNumber)}</td>
                     <td>${b.tripDirection === 'FROM_DFW' ? '← From DFW' : '→ To DFW'}</td>
                     <td>${fmtDate(b.pickupDate)}</td>
-                    <td>DFW ${b.dropoffTerminal}</td>
+                    <td>DFW ${escapeHtml(b.dropoffTerminal)}</td>
                     <td>${payBadge(b.paymentStatus)}</td>
                     <td>${statusBadge(b.bookingStatus)}</td>
                     <td>

@@ -34,6 +34,16 @@ export function getLocalBookings() {
   catch { return []; }
 }
 
+export function escapeHtml(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export function showToast(message, type = 'info') {
   const container = document.getElementById('toast-container');
   if (!container) return;

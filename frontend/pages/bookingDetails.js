@@ -1,5 +1,6 @@
 import { api } from '../services/api.js';
 import { navigate } from '../router/router.js';
+import { escapeHtml } from '../utils/auth.js';
 
 function formatDate(dateStr) {
   if (!dateStr) return '—';
@@ -103,7 +104,7 @@ function renderDetails(booking) {
     <div class="details-header-row">
       <div>
         <h1>Booking Details</h1>
-        <code class="booking-ref">#${booking.id.slice(-10).toUpperCase()}</code>
+        <code class="booking-ref">${booking.bookingRef || ('#' + booking.id.slice(-10).toUpperCase())}</code>
       </div>
       <div style="display:flex;gap:0.75rem;flex-wrap:wrap;">
         <span class="status-badge status-${statusClass(booking.bookingStatus)}">${booking.bookingStatus}</span>
@@ -116,21 +117,21 @@ function renderDetails(booking) {
         <h3 class="details-card-title">Trip Details</h3>
         <div class="detail-row"><span>Pickup Date</span><span>${formatDate(booking.pickupDate)}</span></div>
         <div class="detail-row"><span>Pickup Time</span><span>${formatTime(booking.pickupTime)}</span></div>
-        <div class="detail-row"><span>From</span><span>${booking.pickupAddress}</span></div>
-        <div class="detail-row"><span>Drop-off</span><span>DFW Terminal ${booking.dropoffTerminal}</span></div>
+        <div class="detail-row"><span>From</span><span>${escapeHtml(booking.pickupAddress)}</span></div>
+        <div class="detail-row"><span>Drop-off</span><span>DFW Terminal ${escapeHtml(booking.dropoffTerminal)}</span></div>
         <div class="detail-row"><span>Passengers</span><span>${booking.passengerCount}</span></div>
         <div class="detail-row"><span>Carry-on Bags</span><span>${booking.carryOnCount}</span></div>
         <div class="detail-row"><span>Checked Bags</span><span>${booking.checkedLuggageCount}</span></div>
-        ${booking.airline ? `<div class="detail-row"><span>Airline</span><span>${booking.airline}</span></div>` : ''}
-        ${booking.departureTime ? `<div class="detail-row"><span>Departure</span><span>${booking.departureTime}</span></div>` : ''}
+        ${booking.airline ? `<div class="detail-row"><span>Airline</span><span>${escapeHtml(booking.airline)}</span></div>` : ''}
+        ${booking.departureTime ? `<div class="detail-row"><span>Departure</span><span>${escapeHtml(booking.departureTime)}</span></div>` : ''}
       </div>
 
       <div class="details-card">
         <h3 class="details-card-title">Payment & Contact</h3>
-        <div class="detail-row"><span>Amount</span><span class="price-gold">$99.00</span></div>
+        <div class="detail-row"><span>Amount</span><span class="price-gold">$${Number(booking.price || 99).toFixed(2)}</span></div>
         <div class="detail-row"><span>Payment Status</span><span class="${booking.paymentStatus === 'PAID' ? 'text-green' : ''}">${booking.paymentStatus}</span></div>
-        <div class="detail-row"><span>Phone</span><span>${booking.phoneNumber}</span></div>
-        ${booking.email ? `<div class="detail-row"><span>Email</span><span>${booking.email}</span></div>` : ''}
+        <div class="detail-row"><span>Phone</span><span>${escapeHtml(booking.phoneNumber)}</span></div>
+        ${booking.email ? `<div class="detail-row"><span>Email</span><span>${escapeHtml(booking.email)}</span></div>` : ''}
         <div class="detail-row"><span>Booked On</span><span>${formatDate(booking.createdAt)}</span></div>
       </div>
     </div>

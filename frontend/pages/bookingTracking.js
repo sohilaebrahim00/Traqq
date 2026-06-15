@@ -1,5 +1,6 @@
 import { api } from '../services/api.js';
 import { navigate } from '../router/router.js';
+import { escapeHtml } from '../utils/auth.js';
 
 let mapInstance = null;
 let driverMarker = null;
@@ -265,11 +266,11 @@ export default async function bookingTracking(root, { params = {}, isActive } = 
           </div>
           <div class="ds-info-row">
             <span class="ds-info-label"><i data-lucide="map-pin" class="icon-xs"></i> Pickup Address</span>
-            <span class="ds-info-value">${data.pickupAddress}</span>
+            <span class="ds-info-value">${escapeHtml(data.pickupAddress)}</span>
           </div>
           <div class="ds-info-row">
             <span class="ds-info-label"><i data-lucide="plane" class="icon-xs"></i> Direction</span>
-            <span class="ds-info-value">DFW Terminal ${data.dropoffTerminal}</span>
+            <span class="ds-info-value">DFW Terminal ${escapeHtml(data.dropoffTerminal)}</span>
           </div>
         `;
       }
@@ -284,22 +285,22 @@ export default async function bookingTracking(root, { params = {}, isActive } = 
             <p class="ds-card-title">Your Driver & Vehicle</p>
             <div class="tr-driver-profile">
               <div class="tr-driver-avatar">
-                ${data.driver.profilePhoto 
-                  ? `<img src="${data.driver.profilePhoto}" alt="${data.driver.fullName}" />` 
+                ${data.driver.profilePhoto
+                  ? `<img src="${escapeHtml(data.driver.profilePhoto)}" alt="${escapeHtml(data.driver.fullName)}" />`
                   : `<i data-lucide="user" class="icon-sm" style="color: var(--gold);"></i>`
                 }
               </div>
               <div class="tr-driver-info-details">
-                <h3 style="color: var(--white); font-size: 1.05rem; font-weight: 600; margin-bottom: 0.2rem;">${data.driver.fullName}</h3>
+                <h3 style="color: var(--white); font-size: 1.05rem; font-weight: 600; margin-bottom: 0.2rem;">${escapeHtml(data.driver.fullName)}</h3>
                 <p style="color: var(--white-muted); font-size: 0.82rem; margin-bottom: 0.5rem;">Professional Chauffeur</p>
                 <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
-                  <span class="tr-vehicle-tag">${data.driver.vehicle.color} ${data.driver.vehicle.make} ${data.driver.vehicle.model}</span>
-                  <span class="tr-vehicle-tag" style="background: var(--gold-dim); color: var(--gold); border-color: var(--gold);">${data.driver.vehicle.plate}</span>
+                  <span class="tr-vehicle-tag">${escapeHtml(data.driver.vehicle.color)} ${escapeHtml(data.driver.vehicle.make)} ${escapeHtml(data.driver.vehicle.model)}</span>
+                  <span class="tr-vehicle-tag" style="background: var(--gold-dim); color: var(--gold); border-color: var(--gold);">${escapeHtml(data.driver.vehicle.plate)}</span>
                 </div>
               </div>
             </div>
             <div style="margin-top: 1.25rem; display: flex; gap: 0.75rem;">
-              <a href="tel:${data.driver.phoneNumber}" class="btn btn-ghost btn-sm" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
+              <a href="tel:${escapeHtml(data.driver.phoneNumber)}" class="btn btn-ghost btn-sm" style="flex: 1; display: flex; align-items: center; justify-content: center; gap: 0.4rem;">
                 <i data-lucide="phone" class="icon-xs"></i> Call Driver
               </a>
               <div class="btn btn-ghost btn-sm" style="flex: 1; pointer-events: none; border-color: transparent; text-align: right; display: flex; align-items: center; justify-content: flex-end; gap: 0.4rem; color: var(--gold);">

@@ -1,6 +1,6 @@
 import { adminLayout } from '../utils/adminLayout.js';
 import { api } from '../services/api.js';
-import { showToast } from '../utils/auth.js';
+import { showToast, escapeHtml } from '../utils/auth.js';
 
 function fmtDate(d) {
   return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
@@ -80,17 +80,17 @@ function buildTable(list) {
         <tbody>
           ${list.map(b => `
             <tr data-id="${b.id}">
-              <td><span class="booking-ref-sm">TRQ-${b.id.slice(-8).toUpperCase()}</span></td>
+              <td><span class="booking-ref-sm">${escapeHtml(b.bookingRef) || 'TRQ-'+b.id.slice(-8).toUpperCase()}</span></td>
               <td style="white-space:nowrap;">${b.tripDirection === 'FROM_DFW' ? '← From DFW' : '→ To DFW'}</td>
               <td style="white-space:nowrap;">${fmtDate(b.pickupDate)}</td>
-              <td style="white-space:nowrap;">${b.pickupTime}</td>
-              <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${b.pickupAddress}">${b.pickupAddress}</td>
-              <td style="white-space:nowrap;">DFW ${b.dropoffTerminal}</td>
+              <td style="white-space:nowrap;">${escapeHtml(b.pickupTime)}</td>
+              <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(b.pickupAddress)}">${escapeHtml(b.pickupAddress)}</td>
+              <td style="white-space:nowrap;">DFW ${escapeHtml(b.dropoffTerminal)}</td>
               <td>${b.passengerCount}</td>
               <td>${b.carryOnCount ?? 0}</td>
               <td>${b.checkedLuggageCount ?? 0}</td>
-              <td style="white-space:nowrap;">${b.phoneNumber}</td>
-              <td style="white-space:nowrap;">${b.email || '—'}</td>
+              <td style="white-space:nowrap;">${escapeHtml(b.phoneNumber)}</td>
+              <td style="white-space:nowrap;">${escapeHtml(b.email) || '—'}</td>
               <td>${payBadge(b.paymentStatus)}</td>
               <td>${statusBadge(b.bookingStatus)}</td>
               <td>${qrBadge(b.hasQrCode)}</td>
@@ -202,9 +202,8 @@ export default async function adminBookings(root, { isActive } = {}) {
     const terminal  = root.querySelector('#terminal-filter').value;
 
     const filtered = allBookings.filter(b => {
-      const ref = 'TRQ-' + b.id.slice(-8).toUpperCase();
       const matchSearch = !search ||
-        ref.toLowerCase().includes(search) ||
+        (b.bookingRef || '').toLowerCase().includes(search) ||
         b.id.toLowerCase().includes(search) ||
         b.phoneNumber.includes(search) ||
         (b.email || '').toLowerCase().includes(search) ||

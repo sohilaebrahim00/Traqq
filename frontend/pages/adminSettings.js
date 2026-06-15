@@ -1,6 +1,6 @@
 import { adminLayout } from '../utils/adminLayout.js';
 import { api } from '../services/api.js';
-import { getUser } from '../utils/auth.js';
+import { getUser, escapeHtml } from '../utils/auth.js';
 
 function settingsRow(key, value) {
   return `
@@ -106,8 +106,8 @@ export default async function adminSettings(root, { isActive } = {}) {
         <i data-lucide="user-cog" class="icon-xs"></i>
         Admin Account
       </p>
-      ${settingsRow('Logged in as', user?.fullName || '—')}
-      ${settingsRow('Email', user?.email || '—')}
+      ${settingsRow('Logged in as', escapeHtml(user?.fullName || '—'))}
+      ${settingsRow('Email', escapeHtml(user?.email || '—'))}
       ${settingsRow('Role', '<span class="status-badge status-confirmed">ADMIN</span>')}
       ${settingsRow('Auth Method', 'JWT (access 15 min · refresh 7 days)')}
       ${settingsRow('Token Storage', 'localStorage (traqq_access_token)')}

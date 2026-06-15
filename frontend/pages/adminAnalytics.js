@@ -124,8 +124,8 @@ export default async function adminAnalytics(root, { isActive } = {}) {
         </div>
         <div class="stat-card-body">
           <p class="stat-label">Revenue</p>
-          <p class="stat-value" style="color:var(--gold);">$${(paid.length * 99).toLocaleString()}</p>
-          <p class="stat-sub">${paid.length} paid rides · $99/ride</p>
+          <p class="stat-value" style="color:var(--gold);">$${paid.reduce((s, b) => s + Number(b.price || 0), 0).toLocaleString()}</p>
+          <p class="stat-sub">${paid.length} paid rides</p>
         </div>
       </div>
       <div class="stat-card">
@@ -153,17 +153,19 @@ export default async function adminAnalytics(root, { isActive } = {}) {
     // --- Daily rides + revenue (last 7 days) ---
     const days = getLast7Days();
     const dailyData = days.map(d => {
-      const count = bookings.filter(b => new Date(b.pickupDate).toDateString() === d.toDateString()).length;
+      const dayBookings = bookings.filter(b => new Date(b.pickupDate).toDateString() === d.toDateString());
+      const revenue = dayBookings.filter(b => b.paymentStatus === 'PAID').reduce((s, b) => s + Number(b.price || 0), 0);
       return {
         label: d.toLocaleDateString('en-US', { weekday: 'short' }),
-        val: count
+        val: dayBookings.length,
+        revenue
       };
     });
     root.querySelector('#rides-chart').innerHTML = barChart(dailyData, 160, '');
 
     const revenueData = dailyData.map(d => ({
-      label: d.label, val: d.val * 99,
-      label2: d.val * 99 > 0 ? `$${d.val * 99}` : '0'
+      label: d.label, val: d.revenue,
+      label2: d.revenue > 0 ? `$${d.revenue.toFixed(0)}` : '0'
     }));
     root.querySelector('#revenue-chart').innerHTML = barChart(revenueData, 160, 'bar-gold');
 

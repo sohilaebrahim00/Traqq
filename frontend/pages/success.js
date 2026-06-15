@@ -1,5 +1,5 @@
 import { api } from '../services/api.js';
-import { saveBookingToHistory } from '../utils/auth.js';
+import { saveBookingToHistory, escapeHtml } from '../utils/auth.js';
 
 function formatDate(dateStr) {
   if (!dateStr) return '—';
@@ -87,7 +87,7 @@ export default async function success(root) {
       ? '<span class="status-badge status-confirmed">PAID</span>'
       : `<span class="status-badge status-${booking.paymentStatus.toLowerCase()}">${booking.paymentStatus}</span>`;
 
-    const bookingRef = 'TRQ-' + booking.id.slice(-8).toUpperCase();
+    const bookingRef = booking.bookingRef || ('TRQ-' + booking.id.slice(-8).toUpperCase());
 
     root.querySelector('#booking-details-block').innerHTML = `
       <div class="success-detail-grid">
@@ -117,11 +117,11 @@ export default async function success(root) {
         </div>
         <div class="success-detail-item">
           <span class="success-detail-label">From</span>
-          <span>${booking.pickupAddress}</span>
+          <span>${escapeHtml(booking.pickupAddress)}</span>
         </div>
         <div class="success-detail-item">
           <span class="success-detail-label">Terminal</span>
-          <span>DFW Terminal ${booking.dropoffTerminal}</span>
+          <span>DFW Terminal ${escapeHtml(booking.dropoffTerminal)}</span>
         </div>
         <div class="success-detail-item">
           <span class="success-detail-label">Passengers</span>
@@ -133,21 +133,21 @@ export default async function success(root) {
         </div>
         <div class="success-detail-item">
           <span class="success-detail-label">Contact</span>
-          <span>${booking.phoneNumber}</span>
+          <span>${escapeHtml(booking.phoneNumber)}</span>
         </div>
         ${booking.airline ? `
         <div class="success-detail-item">
           <span class="success-detail-label">Airline</span>
-          <span>${booking.airline}</span>
+          <span>${escapeHtml(booking.airline)}</span>
         </div>` : ''}
         ${booking.departureTime ? `
         <div class="success-detail-item">
           <span class="success-detail-label">Departure</span>
-          <span>${formatTime(booking.departureTime)}</span>
+          <span>${formatTime(escapeHtml(booking.departureTime))}</span>
         </div>` : ''}
         <div class="success-detail-item">
           <span class="success-detail-label">Total Paid</span>
-          <span class="price-gold" style="font-weight:700;">$99.00</span>
+          <span class="price-gold" style="font-weight:700;">$${Number(booking.price || 99).toFixed(2)}</span>
         </div>
       </div>`;
 

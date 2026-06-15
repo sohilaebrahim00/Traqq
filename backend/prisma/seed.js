@@ -69,8 +69,39 @@ async function seed() {
   console.log('\n⚠  Change these credentials before production deployment.\n');
 }
 
+async function seedPromos() {
+  const promoCodes = [
+    {
+      code: 'INFLUENCER15',
+      discountPct: 15,
+      description: '15% off your first ride — influencer partner code',
+      isActive: true,
+      firstRideOnly: true,
+      maxUses: null
+    }
+  ];
+
+  for (const promo of promoCodes) {
+    const existing = await prisma.promoCode.findUnique({ where: { code: promo.code } });
+    if (!existing) {
+      await prisma.promoCode.create({ data: promo });
+      console.log(`Promo code created: ${promo.code} (${promo.discountPct}% off first ride)`);
+    } else {
+      await prisma.promoCode.update({
+        where: { code: promo.code },
+        data: { discountPct: promo.discountPct, description: promo.description, isActive: promo.isActive }
+      });
+      console.log(`Promo code updated: ${promo.code}`);
+    }
+  }
+}
+
 seed()
-  .then(() => prisma.$disconnect())
+  .then(() => seedPromos())
+  .then(() => {
+    console.log('\nSeed complete.');
+    return prisma.$disconnect();
+  })
   .catch(e => {
     console.error('Seed error:', e.message);
     prisma.$disconnect();

@@ -1,6 +1,6 @@
 import { api } from '../services/api.js';
 import { navigate } from '../router/router.js';
-import { getUser, showToast } from '../utils/auth.js';
+import { getUser, showToast, escapeHtml } from '../utils/auth.js';
 
 const VALID_TRANSITIONS = {
   ASSIGNED:           ['DRIVER_ON_THE_WAY', 'CANCELLED'],
@@ -183,11 +183,11 @@ export default async function driverBookingDetails(root, { params = {}, isActive
         </div>
         <div class="ds-info-row">
           <span class="ds-info-label"><i data-lucide="map-pin" class="icon-xs"></i> Pickup</span>
-          <span class="ds-info-value">${booking.pickupAddress}</span>
+          <span class="ds-info-value">${escapeHtml(booking.pickupAddress)}</span>
         </div>
         <div class="ds-info-row">
           <span class="ds-info-label"><i data-lucide="plane" class="icon-xs"></i> Terminal</span>
-          <span class="ds-info-value">DFW Terminal ${booking.dropoffTerminal}</span>
+          <span class="ds-info-value">DFW Terminal ${escapeHtml(booking.dropoffTerminal)}</span>
         </div>
         <div class="ds-info-row">
           <span class="ds-info-label"><i data-lucide="users" class="icon-xs"></i> Passengers</span>
@@ -205,7 +205,7 @@ export default async function driverBookingDetails(root, { params = {}, isActive
         ${booking.airline ? `
         <div class="ds-info-row">
           <span class="ds-info-label"><i data-lucide="flag" class="icon-xs"></i> Airline</span>
-          <span class="ds-info-value">${booking.airline}${booking.departureTime ? ` · Dep. ${fmtTime(booking.departureTime)}` : ''}</span>
+          <span class="ds-info-value">${escapeHtml(booking.airline)}${booking.departureTime ? ` · Dep. ${fmtTime(booking.departureTime)}` : ''}</span>
         </div>` : ''}
 
         <!-- Navigation button -->

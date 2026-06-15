@@ -1,6 +1,6 @@
 import { api } from '../services/api.js';
 import { navigate } from '../router/router.js';
-import { getToken, showToast } from '../utils/auth.js';
+import { getToken, showToast, escapeHtml } from '../utils/auth.js';
 
 function formatDate(dateStr) {
   if (!dateStr) return '';
@@ -18,20 +18,23 @@ function formatExpiry(dateStr) {
   return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-function showDevFallback(container, message) {
+function fmtMoney(dollars) {
+  return '$' + Number(dollars).toFixed(2);
+}
+
+function showPaymentError(container, message, isPermission) {
   container.innerHTML = `
     <div class="payment-unavailable">
-      <p class="payment-unavail-title">Payment system unavailable</p>
+      <p class="payment-unavail-title">${isPermission ? 'Payment Setup Required' : 'Payment Unavailable'}</p>
       <p class="hint">${message}</p>
-      <p class="hint">Add <code>STRIPE_RESTRICTED_KEY</code> and <code>STRIPE_PUBLISHABLE_KEY</code> to <code>backend/.env</code> to enable real payments.</p>
-      <button class="btn btn-primary btn-full" id="testProceedBtn" style="margin-top:1rem;">
-        Simulate Payment (Dev Mode)
-      </button>
+      ${isPermission
+        ? `<p class="hint" style="font-size:0.8rem;color:var(--white-muted);">
+             Go to Stripe Dashboard → API Keys → Restricted Keys → ensure "Payment Intents: Write" is enabled.
+           </p>`
+        : `<p class="hint" style="font-size:0.8rem;color:var(--white-muted);">
+             Add <code>STRIPE_RESTRICTED_KEY</code> and <code>STRIPE_PUBLISHABLE_KEY</code> to <code>backend/.env</code>.
+           </p>`}
     </div>`;
-  container.querySelector('#testProceedBtn')?.addEventListener('click', () => {
-    showToast('Payment simulated — dev mode', 'info');
-    navigate('/success');
-  });
 }
 
 export default async function checkout(root) {
@@ -42,6 +45,9 @@ export default async function checkout(root) {
     navigate('/booking');
     return;
   }
+
+  let currentPrice = Number(booking.price) || 99;
+  let appliedPromo = null; // { code, discountPct, discountAmount, finalPrice }
 
   root.innerHTML = `
     <div class="checkout-page">
@@ -54,6 +60,19 @@ export default async function checkout(root) {
           </div>
 
           <div id="pkg-banner"></div>
+
+          <!-- Promo code section -->
+          <div class="checkout-card promo-section" id="promo-section">
+            <p class="promo-section-title">Have a promo code?</p>
+            <div class="promo-input-row">
+              <input type="text" class="form-input promo-input" id="promoInput"
+                placeholder="Enter code (e.g. INFLUENCER15)"
+                autocomplete="off"
+                style="text-transform:uppercase;letter-spacing:0.05em;" />
+              <button class="btn btn-primary btn-sm" id="promoApplyBtn" type="button">Apply</button>
+            </div>
+            <p id="promo-message" class="promo-message" style="display:none;"></p>
+          </div>
 
           <div class="checkout-card" id="stripe-section">
             <div id="payment-element-container" class="payment-element-wrapper">
@@ -82,7 +101,11 @@ export default async function checkout(root) {
             <p class="checkout-summary-label">Order Summary</p>
             <div class="checkout-summary-item">
               <span>Private DFW Shuttle</span>
-              <span class="price-gold" id="order-price">$99.00</span>
+              <span class="price-gold" id="order-price">${fmtMoney(currentPrice)}</span>
+            </div>
+            <div id="promo-discount-row" style="display:none;" class="checkout-summary-item checkout-discount-row">
+              <span id="promo-discount-label">Promo discount</span>
+              <span class="price-discount" id="promo-discount-amount"></span>
             </div>
             <div class="checkout-summary-divider"></div>
             ${booking.tripDirection ? `
@@ -100,11 +123,11 @@ export default async function checkout(root) {
             </div>
             <div class="checkout-detail-row">
               <span class="checkout-detail-key">From</span>
-              <span>${booking.pickupAddress || '—'}</span>
+              <span>${escapeHtml(booking.pickupAddress) || '—'}</span>
             </div>
             <div class="checkout-detail-row">
               <span class="checkout-detail-key">Terminal</span>
-              <span>DFW Terminal ${booking.dropoffTerminal}</span>
+              <span>DFW Terminal ${escapeHtml(booking.dropoffTerminal)}</span>
             </div>
             <div class="checkout-detail-row">
               <span class="checkout-detail-key">Passengers</span>
@@ -113,12 +136,12 @@ export default async function checkout(root) {
             ${booking.airline ? `
             <div class="checkout-detail-row">
               <span class="checkout-detail-key">Airline</span>
-              <span>${booking.airline}</span>
+              <span>${escapeHtml(booking.airline)}</span>
             </div>` : ''}
             <div class="checkout-summary-divider"></div>
             <div class="checkout-summary-total">
               <span>Total Due</span>
-              <span class="price-gold" id="summary-total" style="font-size:1.25rem;">$99.00</span>
+              <span class="price-gold" id="summary-total" style="font-size:1.25rem;">${fmtMoney(currentPrice)}</span>
             </div>
             <div class="checkout-trust-badges">
               <span class="trust-badge">✓ No hidden fees</span>
@@ -134,17 +157,87 @@ export default async function checkout(root) {
   const stripeSection = root.querySelector('#stripe-section');
   const orderPrice = root.querySelector('#order-price');
   const summaryTotal = root.querySelector('#summary-total');
+  const promoDiscountRow = root.querySelector('#promo-discount-row');
+  const promoDiscountAmount = root.querySelector('#promo-discount-amount');
+  const promoDiscountLabel = root.querySelector('#promo-discount-label');
+
+  function updatePriceSummary(price, promo) {
+    if (promo) {
+      orderPrice.textContent = fmtMoney(99);
+      promoDiscountRow.style.display = '';
+      promoDiscountLabel.textContent = `Promo: ${promo.code} (${promo.discountPct}% off)`;
+      promoDiscountAmount.textContent = `−${fmtMoney(promo.discountAmount)}`;
+    } else {
+      orderPrice.textContent = fmtMoney(price);
+      promoDiscountRow.style.display = 'none';
+    }
+    summaryTotal.textContent = fmtMoney(price);
+  }
+
+  // ── Promo code logic ──────────────────────────────────────────────────────
+  const promoInput = root.querySelector('#promoInput');
+  const promoApplyBtn = root.querySelector('#promoApplyBtn');
+  const promoMsg = root.querySelector('#promo-message');
+
+  promoInput?.addEventListener('input', () => {
+    promoInput.value = promoInput.value.toUpperCase();
+    // Clear previous error/success on new input
+    promoMsg.style.display = 'none';
+    promoMsg.className = 'promo-message';
+    if (appliedPromo) {
+      appliedPromo = null;
+      currentPrice = Number(booking.price) || 99;
+      updatePriceSummary(currentPrice, null);
+      updatePayBtn();
+    }
+  });
+
+  promoApplyBtn?.addEventListener('click', async () => {
+    const code = promoInput.value.trim().toUpperCase();
+    if (!code) {
+      showPromoMsg('Please enter a promo code.', 'error');
+      return;
+    }
+
+    promoApplyBtn.disabled = true;
+    promoApplyBtn.textContent = 'Checking…';
+    promoMsg.style.display = 'none';
+
+    try {
+      const result = await api.post('/promo/apply', { code, bookingId });
+      appliedPromo = result.promo;
+      currentPrice = result.finalPrice;
+      updatePriceSummary(currentPrice, appliedPromo);
+      showPromoMsg(`${result.promo.discountPct}% discount applied! You save ${fmtMoney(result.promo.discountAmount)}.`, 'success');
+      promoApplyBtn.textContent = 'Applied ✓';
+      promoInput.disabled = true;
+      updatePayBtn();
+    } catch (err) {
+      appliedPromo = null;
+      currentPrice = Number(booking.price) || 99;
+      updatePriceSummary(currentPrice, null);
+      showPromoMsg(err.message || 'Invalid promo code.', 'error');
+      promoApplyBtn.disabled = false;
+      promoApplyBtn.textContent = 'Apply';
+    }
+  });
+
+  function showPromoMsg(msg, type) {
+    promoMsg.textContent = msg;
+    promoMsg.className = `promo-message promo-message--${type}`;
+    promoMsg.style.display = 'block';
+  }
 
   // ── Check for active packages (only when logged in) ──────────────────────
   let activePackages = [];
   if (getToken()) {
     try {
       activePackages = await api.get('/packages/active');
-    } catch { /* ignore — user may not be logged in */ }
+    } catch { /* ignore */ }
   }
 
   if (activePackages && activePackages.length > 0) {
-    const pkg = activePackages[0]; // Use the soonest-expiring package
+    const pkg = activePackages[0];
     const daysLeft = Math.ceil((new Date(pkg.expirationDate) - new Date()) / (1000 * 60 * 60 * 24));
 
     pkgBanner.innerHTML = `
@@ -162,13 +255,13 @@ export default async function checkout(root) {
             Use Package Ride
           </button>
           <button class="btn btn-ghost btn-sm" id="payInsteadBtn">
-            Pay $99
+            Pay ${fmtMoney(currentPrice)}
           </button>
         </div>
       </div>`;
 
-    // Hide stripe section by default — show package option first
     stripeSection.style.display = 'none';
+    root.querySelector('#promo-section').style.display = 'none';
     orderPrice.textContent = '1 Package Ride';
     summaryTotal.textContent = '1 Package Ride';
 
@@ -184,16 +277,16 @@ export default async function checkout(root) {
         btn.disabled = false;
         btn.textContent = 'Use Package Ride';
         showToast(err.message || 'Redemption failed. Try paying with card.', 'error');
-        // Reveal Stripe fallback
         stripeSection.style.display = '';
+        root.querySelector('#promo-section').style.display = '';
       }
     });
 
     root.querySelector('#payInsteadBtn').addEventListener('click', () => {
       pkgBanner.style.display = 'none';
       stripeSection.style.display = '';
-      orderPrice.textContent = '$99.00';
-      summaryTotal.textContent = '$99.00';
+      root.querySelector('#promo-section').style.display = '';
+      updatePriceSummary(currentPrice, appliedPromo);
     });
   }
 
@@ -203,24 +296,45 @@ export default async function checkout(root) {
   const errEl = root.querySelector('#payment-error');
   const container = root.querySelector('#payment-element-container');
 
+  function updatePayBtn() {
+    if (payBtnText && !payBtn.disabled) {
+      payBtnText.textContent = `Pay ${fmtMoney(currentPrice)} Securely`;
+    }
+  }
+
   if (typeof Stripe === 'undefined') {
-    showDevFallback(container, 'Stripe.js failed to load. Check your internet connection or add your Stripe publishable key.');
+    showPaymentError(container, 'Stripe.js failed to load. Check your internet connection.', false);
     payBtn.style.display = 'none';
     return;
   }
 
+  let stripe, elements;
+
   try {
     const config = await api.get('/config');
     if (!config.stripePublishableKey) {
-      showDevFallback(container, 'STRIPE_PUBLISHABLE_KEY is not set in backend/.env');
+      showPaymentError(container, 'STRIPE_PUBLISHABLE_KEY is not set in backend/.env', false);
       payBtn.style.display = 'none';
       return;
     }
 
-    const { clientSecret } = await api.post('/payments/create-intent', { bookingId });
+    let intentData;
+    try {
+      intentData = await api.post('/payments/create-intent', { bookingId });
+    } catch (intentErr) {
+      const msg = intentErr.message || 'Payment initialization failed.';
+      const isPermission = msg.toLowerCase().includes('permission') || msg.toLowerCase().includes('key');
+      showPaymentError(container, msg, isPermission);
+      payBtn.style.display = 'none';
+      return;
+    }
 
-    const stripe = Stripe(config.stripePublishableKey);
-    const elements = stripe.elements({
+    const { clientSecret } = intentData;
+    currentPrice = intentData.amount ? intentData.amount / 100 : currentPrice;
+    updatePriceSummary(currentPrice, appliedPromo);
+
+    stripe = Stripe(config.stripePublishableKey);
+    elements = stripe.elements({
       clientSecret,
       appearance: {
         theme: 'night',
@@ -239,7 +353,7 @@ export default async function checkout(root) {
 
     payEl.on('ready', () => {
       payBtn.disabled = false;
-      payBtnText.textContent = 'Pay $99.00 Securely';
+      payBtnText.textContent = `Pay ${fmtMoney(currentPrice)} Securely`;
     });
 
     payBtn.addEventListener('click', async () => {
@@ -253,14 +367,15 @@ export default async function checkout(root) {
         errEl.textContent = error.message;
         errEl.style.display = 'block';
         payBtn.disabled = false;
-        payBtnText.textContent = 'Pay $99.00 Securely';
+        payBtnText.textContent = `Pay ${fmtMoney(currentPrice)} Securely`;
       } else {
         showToast('Payment successful!', 'success');
         navigate('/success');
       }
     });
   } catch (e) {
-    showDevFallback(container, e.message);
+    const isPermission = (e.message || '').toLowerCase().includes('permission');
+    showPaymentError(container, e.message || 'Payment system error.', isPermission);
     payBtn.style.display = 'none';
   }
 }
