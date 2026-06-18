@@ -90,7 +90,7 @@ async function findActiveBookingForSlot(pickupDateObj, pickupTime) {
     where: {
       pickupDate: { gte: pickupDateObj, lte: dayEnd },
       pickupTime,
-      bookingStatus: { in: ['PENDING', 'CONFIRMED'] },
+      bookingStatus: { in: ['PENDING', 'CONFIRMED', 'COMPLETED'] },
       paymentStatus: { notIn: ['REFUNDED', 'FAILED'] }
     }
   });
@@ -116,7 +116,7 @@ async function getAvailability(req, res, next) {
     const bookedBookings = await prisma.booking.findMany({
       where: {
         pickupDate: { gte: pickupDateObj, lte: dayEnd },
-        bookingStatus: { in: ['PENDING', 'CONFIRMED'] },
+        bookingStatus: { in: ['PENDING', 'CONFIRMED', 'COMPLETED'] },
         paymentStatus: { notIn: ['REFUNDED', 'FAILED'] }
       },
       select: { pickupTime: true }

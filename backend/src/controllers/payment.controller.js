@@ -1,5 +1,6 @@
 const prisma = require('../config/prisma');
 const { generateQR } = require('./booking.controller');
+const emailService = require('../services/email.service');
 
 let _stripeInstance = null;
 function getStripe() {
@@ -182,6 +183,10 @@ async function handleWebhook(req, res, next) {
         where: { stripePaymentIntent: intent.id },
         data: { paymentStatus: 'PAID' }
       });
+
+      // Fire-and-forget: email failure must not fail the webhook response
+      emailService.sendBookingConfirmation({ ...booking, bookingStatus: 'CONFIRMED', paymentStatus: 'PAID', qrCode })
+        .catch(err => console.error('[notify] booking-confirmation failed:', err.message));
     }
 
     if (event.type === 'payment_intent.payment_failed') {

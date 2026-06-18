@@ -56,7 +56,9 @@ async function getTracking(req, res, next) {
     };
 
     // Return driver details only if booking is PAID and CONFIRMED and has an assigned driver
-    const isPaidAndConfirmed = booking.paymentStatus === 'PAID' && booking.bookingStatus === 'CONFIRMED';
+    const isPaidAndConfirmed =
+      booking.paymentStatus === 'PAID' &&
+      (booking.bookingStatus === 'CONFIRMED' || booking.bookingStatus === 'COMPLETED');
     
     if (isPaidAndConfirmed && booking.driver) {
       const activeStates = [

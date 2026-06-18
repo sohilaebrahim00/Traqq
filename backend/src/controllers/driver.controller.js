@@ -2,6 +2,7 @@ const bcrypt = require('bcryptjs');
 const { z } = require('zod');
 const prisma = require('../config/prisma');
 const { signAccess, signRefresh } = require('../utils/tokens');
+const emailService = require('../services/email.service');
 
 const loginSchema = z.object({
   identifier: z.string().min(1, 'Please enter your email or phone number.'),
@@ -198,6 +199,28 @@ async function updateBookingStatus(req, res, next) {
       where: { id: booking.id },
       data: updateData
     });
+
+    // Fire-and-forget customer notifications for key status transitions
+    if (newStatus === 'DRIVER_ON_THE_WAY' || newStatus === 'DRIVER_ARRIVED') {
+      const driverUser = await prisma.user.findUnique({
+        where: { id: req.user.id },
+        select: { fullName: true }
+      });
+      const driverInfo = {
+        fullName:     driverUser?.fullName || 'Your Driver',
+        vehicleMake:  profile.vehicleMake,
+        vehicleModel: profile.vehicleModel,
+        vehicleColor: profile.vehicleColor,
+        vehiclePlate: profile.vehiclePlate
+      };
+      if (newStatus === 'DRIVER_ON_THE_WAY') {
+        emailService.sendDriverOnTheWay(booking, driverInfo)
+          .catch(err => console.error('[notify] driver-on-the-way failed:', err.message));
+      } else {
+        emailService.sendDriverArrived(booking, driverInfo)
+          .catch(err => console.error('[notify] driver-arrived failed:', err.message));
+      }
+    }
 
     res.json(updated);
   } catch (err) {

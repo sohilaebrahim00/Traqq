@@ -23,6 +23,7 @@ const customerRoutes = require('./src/routes/customer.routes');
 const packageRoutes = require('./src/routes/package.routes');
 const promoRoutes   = require('./src/routes/promo.routes');
 const prisma        = require('./src/config/prisma');
+const reminderService = require('./src/services/reminder.service');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -106,6 +107,7 @@ app.use((err, req, res, next) => {
 
 const server = app.listen(PORT, () => {
   console.log(`TRAQQ API running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
+  reminderService.start();
 });
 
 // Graceful shutdown — PM2/systemd sends SIGTERM before force-killing
