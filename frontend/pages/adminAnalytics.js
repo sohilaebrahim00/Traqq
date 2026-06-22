@@ -99,12 +99,12 @@ export default async function adminAnalytics(root, { isActive } = {}) {
     const conversion = total ? Math.round(paid.length / total * 100) : 0;
 
     // --- Today / week / month ---
-    const now       = new Date();
-    const todayStr  = now.toDateString();
-    const weekAgo   = new Date(now.getTime() - 6 * 86400000);
-    const monthAgo  = new Date(now.getTime() - 29 * 86400000);
-    const todayRides  = bookings.filter(b => new Date(b.pickupDate).toDateString() === todayStr).length;
-    const weeklyRides = bookings.filter(b => new Date(b.pickupDate) >= weekAgo).length;
+    const now          = new Date();
+    const todayStr     = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(now);
+    const weekAgoStr   = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date(now.getTime() - 6 * 86400000));
+    const monthAgo     = new Date(now.getTime() - 29 * 86400000);
+    const todayRides   = bookings.filter(b => String(b.pickupDate).slice(0, 10) === todayStr).length;
+    const weeklyRides  = bookings.filter(b => String(b.pickupDate).slice(0, 10) >= weekAgoStr).length;
 
     // --- Stat cards ---
     root.querySelector('#analytics-stats').innerHTML = `
@@ -153,7 +153,8 @@ export default async function adminAnalytics(root, { isActive } = {}) {
     // --- Daily rides + revenue (last 7 days) ---
     const days = getLast7Days();
     const dailyData = days.map(d => {
-      const dayBookings = bookings.filter(b => new Date(b.pickupDate).toDateString() === d.toDateString());
+      const dStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(d);
+      const dayBookings = bookings.filter(b => String(b.pickupDate).slice(0, 10) === dStr);
       const revenue = dayBookings.filter(b => b.paymentStatus === 'PAID').reduce((s, b) => s + Number(b.price || 0), 0);
       return {
         label: d.toLocaleDateString('en-US', { weekday: 'short' }),

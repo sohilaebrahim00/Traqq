@@ -38,7 +38,7 @@ const NEXT_ACTION_LABEL = {
 function fmtDate(d) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-US', {
-    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'
+    weekday: 'long', month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC'
   });
 }
 

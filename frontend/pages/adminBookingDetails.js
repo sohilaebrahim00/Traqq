@@ -3,7 +3,7 @@ import { api } from '../services/api.js';
 import { showToast, escapeHtml } from '../utils/auth.js';
 
 function fmtDate(d) {
-  return d ? new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+  return d ? new Date(d).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '—';
 }
 
 function fmtDateTime(d) {
@@ -26,6 +26,10 @@ function row(label, value) {
       <span class="admin-detail-label">${label}</span>
       <span class="admin-detail-value">${value ?? '—'}</span>
     </div>`;
+}
+
+function isoDate(d) {
+  return d ? new Date(d).toISOString().slice(0, 10) : '';
 }
 
 export default async function adminBookingDetails(root, { params, isActive } = {}) {
@@ -61,7 +65,7 @@ export default async function adminBookingDetails(root, { params, isActive } = {
   try {
     const booking = await api.get(`/bookings/${bookingId}`);
     if (isActive && !isActive()) return;
-    
+
     let availableDrivers = [];
     if (!booking.driverId && booking.bookingStatus === 'CONFIRMED' && booking.paymentStatus === 'PAID') {
       try {
@@ -71,6 +75,12 @@ export default async function adminBookingDetails(root, { params, isActive } = {
         console.error('Failed to load drivers', e);
       }
     }
+
+    let editLogs = [];
+    try {
+      const logsRes = await api.get(`/admin/bookings/${bookingId}/logs`);
+      editLogs = logsRes.logs || [];
+    } catch (_) {}
 
     const ref = booking.bookingRef || ('TRQ-' + booking.id.slice(-8).toUpperCase());
     const hasQR = !!booking.qrCode;
@@ -90,10 +100,88 @@ export default async function adminBookingDetails(root, { params, isActive } = {
           <button class="btn btn-ghost btn-sm" id="btn-complete" type="button" style="color:#64b5f6;border-color:rgba(100,181,246,0.4);">
             <i data-lucide="flag" class="icon-xs"></i> Mark Completed
           </button>` : ''}
+        <button class="btn btn-ghost btn-sm" id="btn-edit-toggle" type="button" style="color:var(--gold);border-color:rgba(201,168,76,0.4);">
+          <i data-lucide="pencil" class="icon-xs"></i> Edit Booking
+        </button>
         ${hasQR ? `
           <a class="btn btn-ghost btn-sm" href="/verify-booking?id=${booking.id}" target="_blank" rel="noopener noreferrer">
             <i data-lucide="qr-code" class="icon-xs"></i> Verify QR
           </a>` : ''}
+      </div>
+
+      <!-- Edit Booking Panel (hidden by default) -->
+      <div id="edit-panel" class="admin-detail-card" style="display:none;margin-bottom:1.5rem;">
+        <p class="admin-detail-card-title" style="margin-bottom:1.25rem;">
+          <i data-lucide="pencil" class="icon-xs"></i> Edit Booking
+        </p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;">
+          <div>
+            <label class="form-label">Pickup Date</label>
+            <input type="date" class="form-input" id="edit-date" value="${isoDate(booking.pickupDate)}" />
+          </div>
+          <div>
+            <label class="form-label">Pickup Time</label>
+            <select class="form-input" id="edit-time">
+              ${Array.from({length: 48}, (_, i) => {
+                const h = Math.floor(i / 2);
+                const m = i % 2 === 0 ? '00' : '30';
+                const val = `${h}:${m}`;
+                const label = (() => {
+                  const ampm = h < 12 ? 'AM' : 'PM';
+                  const hr = h % 12 || 12;
+                  return `${hr}:${m} ${ampm}`;
+                })();
+                const sel = booking.pickupTime === val ? ' selected' : '';
+                return `<option value="${val}"${sel}>${label}</option>`;
+              }).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Passengers</label>
+            <input type="number" class="form-input" id="edit-passengers" min="1" max="6" value="${booking.passengerCount}" />
+          </div>
+          <div>
+            <label class="form-label">Vans</label>
+            <input type="number" class="form-input" id="edit-vans" min="1" max="3" value="${booking.vanCount || 1}" />
+          </div>
+          <div>
+            <label class="form-label">Carry-on Bags</label>
+            <input type="number" class="form-input" id="edit-carryon" min="0" value="${booking.carryOnCount ?? 0}" />
+          </div>
+          <div>
+            <label class="form-label">Checked Bags</label>
+            <input type="number" class="form-input" id="edit-checked" min="0" value="${booking.checkedLuggageCount ?? 0}" />
+          </div>
+          <div>
+            <label class="form-label">Phone Number</label>
+            <input type="tel" class="form-input" id="edit-phone" value="${escapeHtml(booking.phoneNumber || '')}" />
+          </div>
+          <div>
+            <label class="form-label">Email</label>
+            <input type="email" class="form-input" id="edit-email" value="${escapeHtml(booking.email || '')}" />
+          </div>
+          <div>
+            <label class="form-label">Terminal</label>
+            <select class="form-input" id="edit-terminal">
+              ${['A','B','C','D','E'].map(t => `<option value="${t}"${booking.dropoffTerminal === t ? ' selected' : ''}>${t}</option>`).join('')}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">Airline</label>
+            <input type="text" class="form-input" id="edit-airline" value="${escapeHtml(booking.airline || '')}" placeholder="Optional" />
+          </div>
+          <div class="full-width" style="grid-column:1/-1;">
+            <label class="form-label">Admin Note (internal only)</label>
+            <input type="text" class="form-input" id="edit-note" placeholder="Reason for change..." />
+          </div>
+        </div>
+        <p id="edit-error" class="form-error" style="display:none;margin-top:1rem;"></p>
+        <div style="display:flex;gap:0.75rem;margin-top:1.25rem;">
+          <button class="btn btn-primary btn-sm" id="btn-save-edit" type="button">
+            <i data-lucide="save" class="icon-xs"></i> Save Changes
+          </button>
+          <button class="btn btn-ghost btn-sm" id="btn-cancel-edit" type="button">Cancel</button>
+        </div>
       </div>
 
       <!-- 2-col detail grid -->
@@ -111,6 +199,7 @@ export default async function adminBookingDetails(root, { params, isActive } = {
           ${row('Pickup Time', escapeHtml(booking.pickupTime))}
           ${row('Pickup Address', escapeHtml(booking.pickupAddress))}
           ${row('DFW Terminal', `DFW Terminal ${escapeHtml(booking.dropoffTerminal)}`)}
+          ${row('Vans Requested', booking.vanCount || 1)}
           ${booking.airline ? row('Airline', escapeHtml(booking.airline)) : ''}
           ${booking.departureTime ? row('Flight Departure', escapeHtml(booking.departureTime)) : ''}
           ${row('Created', fmtDateTime(booking.createdAt))}
@@ -207,13 +296,41 @@ export default async function adminBookingDetails(root, { params, isActive } = {
             <div style="text-align:center;padding:1.5rem 0;">
               <i data-lucide="car-front" class="icon-xl" style="color:var(--white-muted);margin-bottom:0.75rem;display:block;opacity:0.4;"></i>
               <p style="color:var(--white-muted);font-size:0.85rem;">
-                ${(booking.bookingStatus === 'CONFIRMED' && booking.paymentStatus === 'PAID') 
-                  ? 'No available drivers found.' 
+                ${(booking.bookingStatus === 'CONFIRMED' && booking.paymentStatus === 'PAID')
+                  ? 'No available drivers found.'
                   : 'Booking must be CONFIRMED and PAID<br>to assign a driver.'}
               </p>
             </div>
           `}
         </div>
+
+        <!-- Edit History -->
+        ${editLogs.length > 0 ? `
+        <div class="admin-detail-card" style="grid-column:1/-1;">
+          <p class="admin-detail-card-title">
+            <i data-lucide="history" class="icon-xs"></i> Edit History
+          </p>
+          <div style="display:flex;flex-direction:column;gap:0.75rem;margin-top:0.5rem;">
+            ${editLogs.map(log => {
+              let changes = {};
+              try { changes = JSON.parse(log.changes); } catch (_) {}
+              const changedFields = Object.keys(changes).join(', ');
+              return `
+                <div style="padding:0.75rem 1rem;background:var(--bg-card);border-radius:6px;border:1px solid var(--border);">
+                  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.25rem;">
+                    <span style="font-size:0.8rem;font-weight:600;color:${log.changedBy === 'ADMIN' ? 'var(--gold)' : '#64b5f6'};">
+                      ${log.changedBy === 'ADMIN' ? '🔧 Admin' : '👤 Customer'}
+                    </span>
+                    <span style="font-size:0.75rem;color:var(--white-muted);">${fmtDateTime(log.createdAt)}</span>
+                  </div>
+                  <p style="font-size:0.8rem;color:var(--white-muted);margin:0;">
+                    Fields changed: <span style="color:var(--white);">${escapeHtml(changedFields) || '—'}</span>
+                    ${log.note ? `<br>Note: <span style="color:var(--white-muted);">${escapeHtml(log.note)}</span>` : ''}
+                  </p>
+                </div>`;
+            }).join('')}
+          </div>
+        </div>` : ''}
 
       </div>`;
 
@@ -234,6 +351,55 @@ export default async function adminBookingDetails(root, { params, isActive } = {
     root.querySelector('#btn-cancel')?.addEventListener('click', () => updateStatus('CANCELLED', 'cancelled'));
     root.querySelector('#btn-complete')?.addEventListener('click', () => updateStatus('COMPLETED', 'marked as completed'));
 
+    // Edit panel toggle
+    const editPanel = root.querySelector('#edit-panel');
+    root.querySelector('#btn-edit-toggle')?.addEventListener('click', () => {
+      editPanel.style.display = editPanel.style.display === 'none' ? 'block' : 'none';
+      if (window.lucide) window.lucide.createIcons();
+    });
+    root.querySelector('#btn-cancel-edit')?.addEventListener('click', () => {
+      editPanel.style.display = 'none';
+    });
+
+    // Save edit handler
+    root.querySelector('#btn-save-edit')?.addEventListener('click', async () => {
+      const errEl = root.querySelector('#edit-error');
+      errEl.style.display = 'none';
+
+      const payload = {
+        pickupDate:          root.querySelector('#edit-date')?.value || undefined,
+        pickupTime:          root.querySelector('#edit-time')?.value || undefined,
+        passengerCount:      parseInt(root.querySelector('#edit-passengers')?.value) || undefined,
+        vanCount:            parseInt(root.querySelector('#edit-vans')?.value) || undefined,
+        carryOnCount:        parseInt(root.querySelector('#edit-carryon')?.value),
+        checkedLuggageCount: parseInt(root.querySelector('#edit-checked')?.value),
+        phoneNumber:         root.querySelector('#edit-phone')?.value.trim() || undefined,
+        email:               root.querySelector('#edit-email')?.value.trim() || null,
+        dropoffTerminal:     root.querySelector('#edit-terminal')?.value || undefined,
+        airline:             root.querySelector('#edit-airline')?.value.trim() || null,
+        note:                root.querySelector('#edit-note')?.value.trim() || undefined
+      };
+
+      // Remove undefined fields
+      Object.keys(payload).forEach(k => payload[k] === undefined && delete payload[k]);
+
+      const saveBtn = root.querySelector('#btn-save-edit');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+
+      try {
+        await api.patch(`/admin/bookings/${booking.id}/edit`, payload);
+        showToast('Booking updated successfully.', 'success');
+        window.location.href = `/admin/booking-details?id=${booking.id}`;
+      } catch (e) {
+        errEl.textContent = e.message || 'Failed to save changes.';
+        errEl.style.display = 'block';
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save Changes';
+        if (window.lucide) window.lucide.createIcons();
+      }
+    });
+
     // Driver Assignment Handler
     const assignBtn = root.querySelector('#btn-assign-driver');
     if (assignBtn) {
@@ -241,7 +407,7 @@ export default async function adminBookingDetails(root, { params, isActive } = {
         const driverId = root.querySelector('#assign-driver-select').value;
         const errEl = root.querySelector('#assign-error');
         errEl.style.display = 'none';
-        
+
         if (!driverId) {
           errEl.textContent = 'Please select a driver.';
           errEl.style.display = 'block';

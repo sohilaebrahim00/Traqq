@@ -38,7 +38,7 @@ async function loadLeaflet() {
 function fmtDate(d) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric'
+    weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC'
   });
 }
 

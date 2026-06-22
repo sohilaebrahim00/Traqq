@@ -5,7 +5,7 @@ import { getUser, escapeHtml } from '../utils/auth.js';
 function fmtDate(d) {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('en-US', {
-    weekday: 'short', month: 'short', day: 'numeric'
+    weekday: 'short', month: 'short', day: 'numeric', timeZone: 'UTC'
   });
 }
 
@@ -74,9 +74,8 @@ function requireDriverAuth(root) {
 
 function renderBookingCard(b) {
   const isToday = (() => {
-    const today = new Date();
-    const pickup = new Date(b.pickupDate);
-    return pickup.toDateString() === today.toDateString();
+    const todayStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
+    return String(b.pickupDate).slice(0, 10) === todayStr;
   })();
 
   return `
@@ -164,21 +163,14 @@ export default async function driverDashboard(root, { isActive } = {}) {
     const list = root.querySelector('#ds-ride-list');
     if (!list) return;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today.getTime() + 86400000);
+    const todayStr    = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date());
+    const tomorrowStr = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Chicago' }).format(new Date(Date.now() + 86400000));
 
     let filtered;
     if (tab === 'today') {
-      filtered = allBookings.filter(b => {
-        const d = new Date(b.pickupDate);
-        return d >= today && d < tomorrow;
-      });
+      filtered = allBookings.filter(b => String(b.pickupDate).slice(0, 10) === todayStr);
     } else if (tab === 'upcoming') {
-      filtered = allBookings.filter(b => {
-        const d = new Date(b.pickupDate);
-        return d >= tomorrow;
-      });
+      filtered = allBookings.filter(b => String(b.pickupDate).slice(0, 10) >= tomorrowStr);
     } else {
       filtered = allBookings;
     }

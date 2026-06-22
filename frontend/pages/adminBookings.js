@@ -3,7 +3,7 @@ import { api } from '../services/api.js';
 import { showToast, escapeHtml } from '../utils/auth.js';
 
 function fmtDate(d) {
-  return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—';
+  return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' }) : '—';
 }
 
 function statusBadge(s) {
