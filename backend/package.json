@@ -14,7 +14,12 @@
     "db:studio": "prisma studio",
     "seed:admin": "node prisma/seed.js",
     "cleanup:test-users": "node scripts/cleanupTestUsers.js",
-    "cleanup:test-users:bookings": "node scripts/cleanupTestUsers.js --bookings"
+    "cleanup:test-users:bookings": "node scripts/cleanupTestUsers.js --bookings",
+    "test:email": "node -r dotenv/config scripts/test-email.js",
+    "test": "node --test --test-reporter=spec tests/",
+    "test:unit": "node --test --test-reporter=spec tests/date-utils.test.js tests/date-format.test.js",
+    "test:integration": "node --test --test-reporter=spec tests/booking-date.integration.test.js",
+    "test:dates": "node --test --test-reporter=spec tests/"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",
