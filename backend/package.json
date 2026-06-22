@@ -16,10 +16,10 @@
     "cleanup:test-users": "node scripts/cleanupTestUsers.js",
     "cleanup:test-users:bookings": "node scripts/cleanupTestUsers.js --bookings",
     "test:email": "node -r dotenv/config scripts/test-email.js",
-    "test": "node --test --test-reporter=spec tests/",
+    "test": "node --test --test-reporter=spec tests/date-utils.test.js tests/date-format.test.js tests/booking-date.integration.test.js",
     "test:unit": "node --test --test-reporter=spec tests/date-utils.test.js tests/date-format.test.js",
     "test:integration": "node --test --test-reporter=spec tests/booking-date.integration.test.js",
-    "test:dates": "node --test --test-reporter=spec tests/"
+    "test:dates": "node --test --test-reporter=spec tests/date-utils.test.js tests/date-format.test.js tests/booking-date.integration.test.js"
   },
   "dependencies": {
     "@prisma/client": "^5.14.0",
