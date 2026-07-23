@@ -90,6 +90,7 @@ app.get('/api/config', (req, res) => {
 });
 
 app.get('/health', (req, res) => res.json({ status: 'ok', service: 'TRAQQ API' }));
+app.get('/api/health', (req, res) => res.json({ status: 'ok', service: 'TRAQQ API' }));
 
 // Centralized error handler
 app.use((err, req, res, next) => {

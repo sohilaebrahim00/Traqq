@@ -13,7 +13,7 @@ class BookingModel {
   final int vanCount;
   final String tripDirection;
   final String bookingType;
-  final String dropoffTerminal;
+  final String? dropoffTerminal;
   final String? airline;
   final String? departureTime;
   final String? notes;

@@ -392,25 +392,27 @@ function stepHTML(step, data) {
 
 let _googleMapsLoaded = false;
 let _googleMapsKey = null;
-let _googleMapsKeyFetched = false;
+let _googleMapsFetchPromise = null;
 let _pendingCallbacks = [];
 
 async function ensureGoogleMaps() {
   if (_googleMapsLoaded && window.google?.maps?.places) return true;
 
-  if (!_googleMapsKeyFetched) {
-    _googleMapsKeyFetched = true;
-    try {
-      const config = await api.get('/config');
-      _googleMapsKey = config.googleMapsApiKey || '';
-      if (!_googleMapsKey) {
-        console.warn('[TRAQQ Maps] GOOGLE_MAPS_API_KEY is not set — address autocomplete disabled, free-text fallback active.');
+  if (!_googleMapsFetchPromise) {
+    _googleMapsFetchPromise = (async () => {
+      try {
+        const config = await api.get('/config');
+        _googleMapsKey = config.googleMapsApiKey || '';
+        if (!_googleMapsKey) {
+          console.warn('[TRAQQ Maps] GOOGLE_MAPS_API_KEY is not set — address autocomplete disabled, free-text fallback active.');
+        }
+      } catch (err) {
+        _googleMapsKey = '';
+        console.error('[TRAQQ Maps] Failed to fetch /api/config:', err.message);
       }
-    } catch (err) {
-      _googleMapsKey = '';
-      console.error('[TRAQQ Maps] Failed to fetch /api/config:', err.message);
-    }
+    })();
   }
+  await _googleMapsFetchPromise;
 
   if (!_googleMapsKey) return false;
 
@@ -446,8 +448,13 @@ async function ensureGoogleMaps() {
 }
 
 function attachFallbackSuggestions(inputEl, data, onSelect, root, opts = {}) {
-  const suggestionsEl = root.querySelector(`#${opts.suggestionsId || 'address-suggestions'}`);
-  const loadingEl = root.querySelector(`#${opts.loadingId || 'address-loading'}`);
+  const suggestionsId = opts.suggestionsId || 'address-suggestions';
+  const loadingId = opts.loadingId || 'address-loading';
+  const wrapId = opts.wrapId || (opts.suggestionsId === 'dest-suggestions' ? 'dest-wrap' : 'address-wrap');
+  const validatedProp = opts.fieldKey === 'destinationAddress' ? '_destValidated' : '_addressValidated';
+
+  const suggestionsEl = root.querySelector(`#${suggestionsId}`);
+  const loadingEl = root.querySelector(`#${loadingId}`);
   if (!suggestionsEl || !loadingEl) return;
 
   let debounceTimer = null;
@@ -456,8 +463,10 @@ function attachFallbackSuggestions(inputEl, data, onSelect, root, opts = {}) {
 
   inputEl.addEventListener('input', () => {
     const query = inputEl.value.trim();
-    data._addressValidated = false;
-    root.querySelector('.address-validated-icon')?.remove();
+    data[validatedProp] = false;
+
+    const inputRow = inputEl.closest('.address-input-row');
+    inputRow?.querySelector('.address-validated-icon')?.remove();
 
     clearTimeout(debounceTimer);
     suggestionsEl.innerHTML = '';
@@ -477,18 +486,21 @@ function attachFallbackSuggestions(inputEl, data, onSelect, root, opts = {}) {
         sessionToken = new window.google.maps.places.AutocompleteSessionToken();
       }
 
+      const predictionOptions = {
+        input: query,
+        sessionToken,
+        componentRestrictions: { country: 'us' }
+      };
+      if (opts.types && opts.types.length) {
+        predictionOptions.types = opts.types;
+      }
+
       const service = new window.google.maps.places.AutocompleteService();
       service.getPlacePredictions(
-        {
-          input: query,
-          sessionToken,
-          componentRestrictions: { country: 'us' },
-          types: opts.suggestionsId === 'dest-suggestions' ? [] : ['address']
-        },
+        predictionOptions,
         (predictions, status) => {
           loadingEl.style.display = 'none';
           const OK = window.google.maps.places.PlacesServiceStatus.OK;
-          const ZERO = window.google.maps.places.PlacesServiceStatus.ZERO_RESULTS;
 
           if (status !== OK || !predictions?.length) {
             suggestionsEl.innerHTML = '<div class="address-no-results">No addresses found. Try a different search.</div>';
@@ -551,7 +563,8 @@ function attachFallbackSuggestions(inputEl, data, onSelect, root, opts = {}) {
   });
 
   document.addEventListener('click', (e) => {
-    if (!root.querySelector('#address-wrap')?.contains(e.target)) {
+    const wrapEl = root.querySelector(`#${wrapId}`);
+    if (!wrapEl?.contains(e.target)) {
       suggestionsEl.innerHTML = '';
       suggestionsEl.style.display = 'none';
     }
@@ -667,16 +680,22 @@ export default function booking(root) {
       data._addressValidated = true;
       inputEl.value = address;
 
-      root.querySelector('.address-validated-icon')?.remove();
+      const inputRow = inputEl.closest('.address-input-row');
+      inputRow?.querySelector('.address-validated-icon')?.remove();
       const checkEl = document.createElement('span');
       checkEl.className = 'address-validated-icon';
       checkEl.title = 'Address verified';
       checkEl.textContent = '✓';
-      root.querySelector('.address-input-row')?.appendChild(checkEl);
-      root.querySelector('.address-warning')?.remove();
+      inputRow?.appendChild(checkEl);
+      root.querySelector('#address-wrap .address-warning')?.remove();
     };
 
-    attachFallbackSuggestions(inputEl, data, onAddressSelect, root);
+    attachFallbackSuggestions(inputEl, data, onAddressSelect, root, {
+      suggestionsId: 'address-suggestions',
+      loadingId: 'address-loading',
+      wrapId: 'address-wrap',
+      fieldKey: 'pickupAddress'
+    });
 
     if (data.pickupAddress && !data._addressValidated) {
       inputEl.value = data.pickupAddress;
@@ -690,6 +709,14 @@ export default function booking(root) {
     const mapsAvailable = await ensureGoogleMaps();
 
     if (!mapsAvailable) {
+      const wrap = root.querySelector('#dest-wrap');
+      if (wrap) {
+        const hint = document.createElement('p');
+        hint.className = 'hint';
+        hint.style.color = 'var(--gold)';
+        hint.textContent = 'Type your full street address including city and zip code (min 10 characters).';
+        wrap.appendChild(hint);
+      }
       inputEl.addEventListener('input', () => {
         data.destinationAddress = inputEl.value;
         data._destValidated = inputEl.value.trim().length >= 10;
@@ -699,9 +726,6 @@ export default function booking(root) {
     }
 
     if (window.lucide) window.lucide.createIcons();
-
-    const destSuggestionsEl = root.querySelector('#dest-suggestions');
-    const destLoadingEl = root.querySelector('#dest-loading');
 
     const onDestSelect = ({ address, lat, lng, placeId }) => {
       data.destinationAddress = address;
@@ -721,10 +745,10 @@ export default function booking(root) {
       root.querySelector('#dest-wrap .address-warning')?.remove();
     };
 
-    // Reuse the existing fallback suggestions helper bound to dest elements
     attachFallbackSuggestions(inputEl, data, onDestSelect, root, {
       suggestionsId: 'dest-suggestions',
       loadingId: 'dest-loading',
+      wrapId: 'dest-wrap',
       fieldKey: 'destinationAddress'
     });
 
