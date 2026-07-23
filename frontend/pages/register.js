@@ -8,7 +8,7 @@ export default function register(root) {
       <div class="auth-card reveal-scale">
         <div class="auth-brand">
           <span class="auth-logo">TRAQQ</span>
-          <p class="auth-tagline">Premium Airport Shuttle</p>
+          <p class="auth-tagline">Premium Private Transportation</p>
         </div>
         <h1 class="auth-title">Create your account</h1>
         <p class="auth-sub">Save your bookings, view ride history, and check in faster.</p>

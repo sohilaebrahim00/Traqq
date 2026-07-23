@@ -186,7 +186,7 @@ class _CheckoutScreenState extends ConsumerState<CheckoutScreen> {
                         style: TextStyle(
                             color: TColors.gold, fontSize: 10, fontWeight: FontWeight.w700, letterSpacing: 2)),
                     const SizedBox(height: 14),
-                    _LineItem('TRAQQ Airport Shuttle', '\$${_originalDollars.toStringAsFixed(2)}'),
+                    _LineItem('TRAQQ Private Transfer', '\$${_originalDollars.toStringAsFixed(2)}'),
                     if (_discountCents > 0)
                       _LineItem('Promo ($_promoApplied)', '−\$${(_discountCents / 100.0).toStringAsFixed(2)}',
                           valueColor: TColors.success),

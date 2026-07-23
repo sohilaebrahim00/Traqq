@@ -8,7 +8,7 @@ export default function login(root) {
       <div class="auth-card reveal-scale">
         <div class="auth-brand">
           <span class="auth-logo">TRAQQ</span>
-          <p class="auth-tagline">Premium Airport Shuttle</p>
+          <p class="auth-tagline">Premium Private Transportation</p>
         </div>
         <h1 class="auth-title">Welcome back</h1>
         <p class="auth-sub">Sign in to manage your bookings and ride history.</p>
