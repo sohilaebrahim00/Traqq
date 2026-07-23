@@ -76,7 +76,7 @@ export default function login(root) {
       localStorage.setItem('traqq_user', JSON.stringify(res.user));
 
       showToast(`Welcome back, ${res.user.fullName.split(' ')[0]}!`, 'success');
-      navigate(res.user.role === 'ADMIN' ? '/admin' : '/history');
+      navigate(res.user.role === 'ADMIN' ? '/admin/bookings' : '/history');
     } catch (err) {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Sign In';

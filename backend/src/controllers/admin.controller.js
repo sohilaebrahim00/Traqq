@@ -1,13 +1,16 @@
 const bcrypt = require('bcryptjs');
 const { z } = require('zod');
 const prisma = require('../config/prisma');
+const { getUsedVansForSlot, parseDateUTC, calendarDateError } = require('./booking.controller.helpers');
+
+const VAN_CAPACITY = 3;
 
 const createDriverSchema = z.object({
   fullName:      z.string().min(2, 'Full name must be at least 2 characters.'),
   phoneNumber:   z.string().min(10, 'Phone number must be at least 10 digits.'),
   email:          z.string().email('Please enter a valid email address.'),
   password:       z.string().min(8, 'Password must be at least 8 characters.'),
-  licenseNumber:  z.string().min(3, 'License number must be at least 3 characters.'),
+  licenseNumber:  z.string().min(3, 'License number must be at least 3 characters.').optional(),
   vehicleMake:    z.string().min(1, 'Vehicle make is required.'),
   vehicleModel:   z.string().min(1, 'Vehicle model is required.'),
   vehicleColor:   z.string().min(1, 'Vehicle color is required.'),
@@ -17,6 +20,25 @@ const createDriverSchema = z.object({
 
 const assignDriverSchema = z.object({
   driverId: z.string().min(1, 'Driver ID is required.')
+});
+
+const editBookingSchema = z.object({
+  pickupDate:          z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  pickupTime:          z.string().regex(/^\d{1,2}:(00|30)$/).optional(),
+  // Use z.preprocess to guard against NaN values sent from parseInt() on empty inputs
+  passengerCount:      z.preprocess(v => (typeof v === 'number' && !isNaN(v)) ? v : undefined, z.number().int().min(1).max(6).optional()),
+  carryOnCount:        z.preprocess(v => (typeof v === 'number' && !isNaN(v)) ? v : undefined, z.number().int().min(0).optional()),
+  checkedLuggageCount: z.preprocess(v => (typeof v === 'number' && !isNaN(v)) ? v : undefined, z.number().int().min(0).optional()),
+  vanCount:            z.preprocess(v => (typeof v === 'number' && !isNaN(v)) ? v : undefined, z.number().int().min(1).max(3).optional()),
+  phoneNumber:         z.string().min(10).optional(),
+  email:               z.string().email().optional().nullable(),
+  airline:             z.string().optional().nullable(),
+  departureTime:       z.string().optional().nullable(),
+  dropoffTerminal:     z.enum(['A', 'B', 'C', 'D', 'E']).optional().nullable(),
+  pickupAddress:       z.string().min(5).optional(),
+  destinationAddress:  z.string().min(5).optional().nullable(),
+  notes:               z.string().optional().nullable(),
+  note:                z.string().optional()
 });
 
 async function getOverview(req, res, next) {
@@ -90,6 +112,115 @@ async function updateBookingStatus(req, res, next) {
   }
 }
 
+async function editBooking(req, res, next) {
+  try {
+    const { id } = req.params;
+    const data = editBookingSchema.parse(req.body);
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ error: 'No fields to update.' });
+    }
+
+    const existing = await prisma.booking.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Booking not found.' });
+
+    const updateData = {};
+    const note = data.note || null;
+    const { note: _note, ...fields } = data;
+
+    // Handle date/time changes with re-validation
+    const newDate = fields.pickupDate || null;
+    const newTime = fields.pickupTime || null;
+
+    if (newDate || newTime) {
+      const dateStr = newDate || existing.pickupDate.toISOString().slice(0, 10);
+      const timeStr = newTime || existing.pickupTime;
+
+      const dateErr = calendarDateError(dateStr);
+      if (dateErr) return res.status(400).json({ error: dateErr });
+
+      const pickupDateObj = parseDateUTC(dateStr);
+      const todayUTC = new Date();
+      todayUTC.setUTCHours(0, 0, 0, 0);
+      if (pickupDateObj < todayUTC) {
+        return res.status(400).json({ error: 'Please select a future pickup date.' });
+      }
+
+      // Capacity check (exclude current booking)
+      const newVanCount = fields.vanCount ?? existing.vanCount ?? 1;
+      const usedVans = await getUsedVansForSlot(pickupDateObj, timeStr, existing.id);
+      if (usedVans + newVanCount > VAN_CAPACITY) {
+        const remaining = VAN_CAPACITY - usedVans;
+        if (remaining <= 0) {
+          return res.status(409).json({ error: 'This time slot is fully booked. Please choose another time.' });
+        }
+        return res.status(409).json({
+          error: `Only ${remaining} van${remaining === 1 ? '' : 's'} available for this slot.`
+        });
+      }
+
+      if (newDate) updateData.pickupDate = pickupDateObj;
+      if (newTime) updateData.pickupTime = timeStr;
+    }
+
+    // Copy over other editable fields
+    const simpleFields = ['passengerCount', 'carryOnCount', 'checkedLuggageCount', 'vanCount',
+                          'phoneNumber', 'email', 'airline', 'departureTime', 'dropoffTerminal',
+                          'pickupAddress', 'destinationAddress', 'notes'];
+    for (const key of simpleFields) {
+      if (fields[key] !== undefined) updateData[key] = fields[key];
+    }
+
+    // If only vanCount changed (no date/time change), still check capacity
+    if (fields.vanCount !== undefined && !newDate && !newTime) {
+      const pickupDateObj = new Date(existing.pickupDate);
+      const usedVans = await getUsedVansForSlot(pickupDateObj, existing.pickupTime, existing.id);
+      if (usedVans + fields.vanCount > VAN_CAPACITY) {
+        const remaining = VAN_CAPACITY - usedVans;
+        return res.status(409).json({
+          error: remaining <= 0
+            ? 'This time slot is fully booked.'
+            : `Only ${remaining} van${remaining === 1 ? '' : 's'} available for this slot.`
+        });
+      }
+    }
+
+    const updated = await prisma.booking.update({ where: { id }, data: updateData });
+
+    // Log the edit
+    await prisma.bookingEditLog.create({
+      data: {
+        bookingId: id,
+        changedBy: 'ADMIN',
+        adminId: req.user?.id || null,
+        changes: JSON.stringify(updateData),
+        note
+      }
+    }).catch(() => {});
+
+    res.json({ success: true, booking: updated });
+  } catch (err) {
+    if (err.name === 'ZodError') {
+      return res.status(400).json({ error: err.errors[0]?.message || 'Invalid update data.' });
+    }
+    if (err.code === 'P2025') return res.status(404).json({ error: 'Booking not found.' });
+    next(err);
+  }
+}
+
+async function getBookingEditLogs(req, res, next) {
+  try {
+    const { id } = req.params;
+    const logs = await prisma.bookingEditLog.findMany({
+      where: { bookingId: id },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ success: true, logs });
+  } catch (err) {
+    next(err);
+  }
+}
+
 async function createDriver(req, res, next) {
   try {
     const data = createDriverSchema.parse(req.body);
@@ -109,7 +240,7 @@ async function createDriver(req, res, next) {
       const profile = await tx.driverProfile.create({
         data: {
           userId: user.id,
-          licenseNumber: data.licenseNumber,
+          licenseNumber: data.licenseNumber || null,
           vehicleMake: data.vehicleMake,
           vehicleModel: data.vehicleModel,
           vehicleColor: data.vehicleColor,
@@ -129,7 +260,7 @@ async function createDriver(req, res, next) {
         fullName: result.user.fullName,
         phoneNumber: result.user.phoneNumber,
         email: result.user.email,
-        licenseNumber: result.profile.licenseNumber,
+        licenseNumber: result.profile.licenseNumber || null,
         vehicleMake: result.profile.vehicleMake,
         vehicleModel: result.profile.vehicleModel,
         vehicleColor: result.profile.vehicleColor,
@@ -185,14 +316,13 @@ async function getDrivers(req, res, next) {
       }
     });
 
-    // Flatten representation for frontend clarity
     const formattedDrivers = drivers.map(d => ({
       id: d.driverProfile?.id || '',
       userId: d.id,
       fullName: d.fullName,
       phoneNumber: d.phoneNumber,
       email: d.email,
-      licenseNumber: d.driverProfile?.licenseNumber || '',
+      licenseNumber: d.driverProfile?.licenseNumber || null,
       vehicleMake: d.driverProfile?.vehicleMake || '',
       vehicleModel: d.driverProfile?.vehicleModel || '',
       vehicleColor: d.driverProfile?.vehicleColor || '',
@@ -209,7 +339,7 @@ async function getDrivers(req, res, next) {
 
 async function assignDriver(req, res, next) {
   try {
-    const { id } = req.params; // Booking ID
+    const { id } = req.params;
     const { driverId } = assignDriverSchema.parse(req.body);
 
     const driver = await prisma.driverProfile.findUnique({
@@ -224,22 +354,18 @@ async function assignDriver(req, res, next) {
       return res.status(400).json({ error: 'This driver is currently marked as unavailable.' });
     }
 
-    const booking = await prisma.booking.findUnique({
-      where: { id }
-    });
+    const booking = await prisma.booking.findUnique({ where: { id } });
 
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found.' });
     }
 
-    // Constraints: Cannot assign cancelled or completed bookings
     if (booking.bookingStatus === 'CANCELLED' || booking.bookingStatus === 'COMPLETED') {
       return res.status(400).json({
         error: 'Cannot assign a driver to a COMPLETED or CANCELLED booking.'
       });
     }
 
-    // Constraints: Admin can assign only PAID and CONFIRMED bookings
     if (booking.bookingStatus !== 'CONFIRMED' || booking.paymentStatus !== 'PAID') {
       return res.status(400).json({
         error: 'Only PAID and CONFIRMED bookings can be assigned to a driver.'
@@ -255,10 +381,7 @@ async function assignDriver(req, res, next) {
       }
     });
 
-    res.json({
-      success: true,
-      booking: updatedBooking
-    });
+    res.json({ success: true, booking: updatedBooking });
   } catch (err) {
     if (err.name === 'ZodError') {
       return res.status(400).json({ error: 'Driver ID is required.' });
@@ -270,6 +393,8 @@ async function assignDriver(req, res, next) {
 module.exports = {
   getOverview,
   updateBookingStatus,
+  editBooking,
+  getBookingEditLogs,
   createDriver,
   getDrivers,
   assignDriver

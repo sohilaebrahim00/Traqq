@@ -15,9 +15,6 @@ export function renderFooter(root) {
             <div class="footer-contact-item">
               <a href="mailto:support@mytraqq.com">support@mytraqq.com</a>
             </div>
-            <div class="footer-contact-item">
-              <a href="tel:6823903071">682-390-3071</a>
-            </div>
             <div class="footer-contact-item">5860 Collin McKinney Pkwy, Suite 605</div>
             <div class="footer-contact-item">McKinney, TX 75070</div>
             <div class="footer-contact-item">Serving Dallas Fort Worth, TX</div>

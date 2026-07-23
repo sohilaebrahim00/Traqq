@@ -63,6 +63,7 @@ export function adminLayout(root, { title, active, bodyHTML }) {
     { path: '/admin/customers',   label: 'Customers',  icon: 'users'            },
     { path: '/admin/payments',    label: 'Payments',   icon: 'credit-card'      },
     { path: '/admin/promos',      label: 'Promo Codes', icon: 'tag'             },
+    { path: '/admin/calendar',    label: 'Calendar',   icon: 'calendar-days'    },
     { path: '/admin/analytics',   label: 'Analytics',  icon: 'bar-chart-2'      },
     { path: '/admin/settings',    label: 'Settings',   icon: 'settings'         },
   ];

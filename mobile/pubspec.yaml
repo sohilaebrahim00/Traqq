@@ -1,0 +1,90 @@
+name: traqq_app
+description: TRAQQ — Premium Airport Shuttle Booking
+publish_to: 'none'
+version: 1.0.5+6
+
+environment:
+  sdk: '>=3.3.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # ── State Management ───────────────────────────────────
+  flutter_riverpod: ^2.5.1
+
+  # ── Navigation ─────────────────────────────────────────
+  go_router: ^14.2.7
+
+  # ── Network ───────────────────────────────────────────
+  dio: ^5.4.3
+
+  # ── Secure Storage ────────────────────────────────────
+  flutter_secure_storage: ^9.2.2
+
+  # ── Payments ──────────────────────────────────────────
+  flutter_stripe: ^10.1.1
+
+  # ── QR Code ───────────────────────────────────────────
+  qr_flutter: ^4.1.0
+
+  # ── Firebase ──────────────────────────────────────────
+  firebase_core: ^3.3.0
+  firebase_messaging: ^15.0.4
+  firebase_analytics: ^11.2.1
+  firebase_crashlytics: ^4.0.4
+
+  # ── Location (Driver GPS) ─────────────────────────────
+  geolocator: ^12.0.0
+  permission_handler: ^11.3.1
+
+  # ── UI / UX ───────────────────────────────────────────
+  cached_network_image: ^3.3.1
+  shimmer: ^3.0.0
+  intl: ^0.19.0
+
+  # ── Maps (Tracking screen) ────────────────────────────────
+  flutter_map: ^7.0.2
+  latlong2: ^0.9.1
+
+  # ── Fonts ─────────────────────────────────────────────────
+  # Pinned >=6.3.1: 6.3.0 has a const-map-with-FontWeight-keys pattern
+  # that dart2js's web release compiler rejects during constant
+  # evaluation (mobile AOT compiles it fine, web build fails).
+  google_fonts: ^6.3.1
+
+  # ── Utilities ─────────────────────────────────────────
+  url_launcher: ^6.3.0
+  connectivity_plus: ^6.0.3
+  package_info_plus: ^8.0.0
+  shared_preferences: ^2.3.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^4.0.0
+  flutter_native_splash: ^2.4.0
+  flutter_launcher_icons: ^0.13.1
+
+# ── Native Splash ──────────────────────────────────────
+flutter_native_splash:
+  color: "#0a0a0a"
+  color_dark: "#0a0a0a"
+  android: true
+  ios: true
+  web: false
+  # image: assets/images/splash_logo.png
+
+# ── Launcher Icons ────────────────────────────────────
+flutter_icons:
+  android: "launcher_icon"
+  adaptive_icon_background: "#0a0a0a"
+  ios: true
+  min_sdk_android: 21
+  # image_path: "assets/images/icon.png"
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/images/

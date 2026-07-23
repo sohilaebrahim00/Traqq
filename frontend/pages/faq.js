@@ -45,7 +45,7 @@ const FAQS = [
   },
   {
     q: 'How do I contact support?',
-    a: 'You can reach TRAQQ through the Contact page at /contact, by phone at 682-390-3071, or by email at support@mytraqq.com. Our support team is available daily 6 AM – 10 PM CT.'
+    a: 'You can reach TRAQQ through the Contact page at /contact or by email at support@mytraqq.com. Our support team is available daily 6 AM – 10 PM CT.'
   },
 ];
 

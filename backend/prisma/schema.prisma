@@ -3,10 +3,9 @@ generator client {
 }
 
 datasource db {
-  // Always "postgresql" — matches migration_lock.toml.
-  // Local dev: use a local PostgreSQL instance (see backend/.env.example).
-  // Quick local setup: docker run -d --name traqq-db -e POSTGRES_PASSWORD=dev -p 5432:5432 postgres:15
-  provider = "postgresql"
+  // Local dev: SQLite (file:./prisma/dev.db in .env).
+  // Production: switch provider back to "postgresql" and update DATABASE_URL.
+  provider = "sqlite"
   url      = env("DATABASE_URL")
 }
 
@@ -33,7 +32,7 @@ model DriverProfile {
   userId                String         @unique
   user                  User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   profilePhoto          String?
-  licenseNumber         String         @unique
+  licenseNumber         String?        @unique
   vehicleMake           String
   vehicleModel          String
   vehicleColor          String
@@ -66,9 +65,11 @@ model Booking {
   carryOnCount        Int           @default(0)
   checkedLuggageCount Int           @default(0)
   tripDirection       String        @default("TO_DFW")
-  dropoffTerminal     String
+  bookingType         String        @default("AIRPORT")
+  dropoffTerminal     String?
   airline             String?
   departureTime       String?
+  notes               String?
   phoneNumber         String
   email               String?
   bookingStatus       String        @default("PENDING")
@@ -77,6 +78,7 @@ model Booking {
   price               Decimal       @default(99.00)
   promoCode           String?
   discountAmount      Decimal       @default(0)
+  vanCount            Int           @default(1)
   qrHash              String        @unique
   qrCode              String?
 
@@ -88,6 +90,7 @@ model Booking {
 
   transaction         Transaction?
   promoCodeUse        PromoCodeUse?
+  editLogs            BookingEditLog[]
 
   assignedAt          DateTime?
   driverStartedAt     DateTime?
@@ -101,8 +104,10 @@ model Booking {
   @@index([driverId])
   @@index([userId])
   @@index([rideStatus])
+  @@index([bookingStatus])
   @@index([paymentStatus])
   @@index([pickupDate])
+  @@index([createdAt])
   @@map("bookings")
 }
 
@@ -168,4 +173,18 @@ model PromoCodeUse {
   @@index([promoCodeId])
   @@index([userId])
   @@map("promo_code_uses")
+}
+
+model BookingEditLog {
+  id          String   @id @default(cuid())
+  bookingId   String
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  changedBy   String
+  adminId     String?
+  changes     String
+  note        String?
+  createdAt   DateTime @default(now())
+
+  @@index([bookingId])
+  @@map("booking_edit_logs")
 }

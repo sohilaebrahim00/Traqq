@@ -35,8 +35,11 @@ async function getTracking(req, res, next) {
       pickupDate:      booking.pickupDate,
       pickupTime:      booking.pickupTime,
       pickupAddress:   booking.pickupAddress,
+      destinationAddress: booking.destinationAddress,
       tripDirection:   booking.tripDirection,
+      bookingType:     booking.bookingType,
       dropoffTerminal: booking.dropoffTerminal,
+      notes:           booking.notes,
       bookingStatus:   booking.bookingStatus,
       rideStatus:      booking.rideStatus,
       paymentStatus:   booking.paymentStatus,
@@ -104,8 +107,8 @@ async function getMyBookings(req, res, next) {
       where: { userId: req.user.id },
       select: {
         id: true, bookingRef: true, pickupDate: true, pickupTime: true,
-        pickupAddress: true, passengerCount: true, tripDirection: true,
-        dropoffTerminal: true, airline: true, bookingStatus: true,
+        pickupAddress: true, destinationAddress: true, passengerCount: true, tripDirection: true,
+        bookingType: true, dropoffTerminal: true, airline: true, notes: true, bookingStatus: true,
         rideStatus: true, paymentStatus: true, price: true,
         qrCode: true, createdAt: true
       },

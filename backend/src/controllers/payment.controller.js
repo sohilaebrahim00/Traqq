@@ -185,8 +185,11 @@ async function handleWebhook(req, res, next) {
       });
 
       // Fire-and-forget: email failure must not fail the webhook response
-      emailService.sendBookingConfirmation({ ...booking, bookingStatus: 'CONFIRMED', paymentStatus: 'PAID', qrCode })
+      const confirmedBooking = { ...booking, bookingStatus: 'CONFIRMED', paymentStatus: 'PAID', qrCode };
+      emailService.sendBookingConfirmation(confirmedBooking)
         .catch(err => console.error('[notify] booking-confirmation failed:', err.message));
+      emailService.sendAdminNewBooking(confirmedBooking)
+        .catch(err => console.error('[notify] admin-notification failed:', err.message));
     }
 
     if (event.type === 'payment_intent.payment_failed') {

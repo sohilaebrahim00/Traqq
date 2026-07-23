@@ -181,14 +181,38 @@ export default async function driverBookingDetails(root, { params = {}, isActive
           <span class="ds-info-label"><i data-lucide="calendar" class="icon-xs"></i> Date</span>
           <span class="ds-info-value">${fmtDate(booking.pickupDate)} at ${fmtTime(booking.pickupTime)}</span>
         </div>
-        <div class="ds-info-row">
-          <span class="ds-info-label"><i data-lucide="map-pin" class="icon-xs"></i> Pickup</span>
-          <span class="ds-info-value">${escapeHtml(booking.pickupAddress)}</span>
-        </div>
-        <div class="ds-info-row">
-          <span class="ds-info-label"><i data-lucide="plane" class="icon-xs"></i> Terminal</span>
-          <span class="ds-info-value">DFW Terminal ${escapeHtml(booking.dropoffTerminal)}</span>
-        </div>
+        ${(() => {
+          const dir = booking.tripDirection || 'TO_DFW';
+          const terminal = booking.dropoffTerminal ? `DFW Terminal ${escapeHtml(booking.dropoffTerminal)}` : 'DFW International Airport';
+          const pickupNav = dir === 'FROM_DFW' ? terminal : escapeHtml(booking.pickupAddress);
+          if (dir === 'FROM_DFW') {
+            return [
+              `<div class="ds-info-row"><span class="ds-info-label"><i data-lucide="plane" class="icon-xs"></i> Pickup</span><span class="ds-info-value">${terminal}</span></div>`,
+              `<div class="ds-info-row"><span class="ds-info-label"><i data-lucide="map-pin" class="icon-xs"></i> Drop-off</span><span class="ds-info-value">${escapeHtml(booking.destinationAddress || booking.pickupAddress)}</span></div>`
+            ].join('');
+          }
+          if (dir === 'POINT_TO_POINT') {
+            return [
+              `<div class="ds-info-row"><span class="ds-info-label"><i data-lucide="map-pin" class="icon-xs"></i> Pickup</span><span class="ds-info-value">${escapeHtml(booking.pickupAddress)}</span></div>`,
+              booking.destinationAddress ? `<div class="ds-info-row"><span class="ds-info-label"><i data-lucide="flag" class="icon-xs"></i> Drop-off</span><span class="ds-info-value">${escapeHtml(booking.destinationAddress)}</span></div>` : ''
+            ].join('');
+          }
+          return [
+            `<div class="ds-info-row"><span class="ds-info-label"><i data-lucide="map-pin" class="icon-xs"></i> Pickup</span><span class="ds-info-value">${escapeHtml(booking.pickupAddress)}</span></div>`,
+            `<div class="ds-info-row"><span class="ds-info-label"><i data-lucide="plane" class="icon-xs"></i> Drop-off</span><span class="ds-info-value">${terminal}</span></div>`
+          ].join('');
+        })()}
+        <!-- Navigation button -->
+        <a
+          class="btn btn-ghost btn-full"
+          style="margin-top:1.25rem;"
+          href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(booking.tripDirection === 'FROM_DFW' ? 'DFW International Airport, Dallas, TX' : booking.pickupAddress)}"
+          target="_blank"
+          rel="noopener noreferrer"
+          id="nav-btn"
+        >
+          <i data-lucide="navigation" class="icon-xs"></i> Navigate to Pickup
+        </a>
         <div class="ds-info-row">
           <span class="ds-info-label"><i data-lucide="users" class="icon-xs"></i> Passengers</span>
           <span class="ds-info-value">${booking.passengerCount} passenger${booking.passengerCount !== 1 ? 's' : ''}</span>
@@ -204,21 +228,14 @@ export default async function driverBookingDetails(root, { params = {}, isActive
         </div>` : ''}
         ${booking.airline ? `
         <div class="ds-info-row">
-          <span class="ds-info-label"><i data-lucide="flag" class="icon-xs"></i> Airline</span>
-          <span class="ds-info-value">${escapeHtml(booking.airline)}${booking.departureTime ? ` · Dep. ${fmtTime(booking.departureTime)}` : ''}</span>
+          <span class="ds-info-label"><i data-lucide="flag" class="icon-xs"></i> ${booking.tripDirection === 'POINT_TO_POINT' ? 'Venue' : 'Airline'}</span>
+          <span class="ds-info-value">${escapeHtml(booking.airline)}${booking.departureTime ? ` · ${fmtTime(booking.departureTime)}` : ''}</span>
         </div>` : ''}
-
-        <!-- Navigation button -->
-        <a
-          class="btn btn-ghost btn-full"
-          style="margin-top:1.25rem;"
-          href="https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(booking.pickupAddress)}"
-          target="_blank"
-          rel="noopener noreferrer"
-          id="nav-btn"
-        >
-          <i data-lucide="navigation" class="icon-xs"></i> Navigate to Pickup
-        </a>
+        ${booking.notes ? `
+        <div class="ds-info-row">
+          <span class="ds-info-label"><i data-lucide="message-circle" class="icon-xs"></i> Notes</span>
+          <span class="ds-info-value">${escapeHtml(booking.notes)}</span>
+        </div>` : ''}
       </div>
 
       <!-- Status Timeline Card -->

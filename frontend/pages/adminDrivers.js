@@ -47,11 +47,7 @@ export default async function adminDrivers(root, { isActive }) {
           
           <h3 style="font-size:1rem; color:var(--white); margin-bottom:1rem; border-bottom:1px solid var(--border); padding-bottom:0.5rem;">Vehicle Details</h3>
           
-          <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
-            <div>
-              <label class="form-label">License Number</label>
-              <input type="text" id="df-license" class="form-input" required />
-            </div>
+          <div class="form-row" style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem; margin-bottom:1.5rem;">
             <div>
               <label class="form-label">Vehicle Make</label>
               <input type="text" id="df-make" class="form-input" placeholder="e.g. Cadillac" required />
@@ -120,7 +116,6 @@ export default async function adminDrivers(root, { isActive }) {
       email: root.querySelector('#df-email').value.trim(),
       phoneNumber: root.querySelector('#df-phoneNumber').value.trim(),
       password: root.querySelector('#df-password').value,
-      licenseNumber: root.querySelector('#df-license').value.trim(),
       vehicleMake: root.querySelector('#df-make').value.trim(),
       vehicleModel: root.querySelector('#df-model').value.trim(),
       vehicleColor: root.querySelector('#df-color').value.trim(),
@@ -203,7 +198,7 @@ export default async function adminDrivers(root, { isActive }) {
               </div>
               <div style="margin-top:1.25rem;">
                 <p style="font-size:0.8rem; color:var(--white-muted);"><i data-lucide="mail" class="icon-xs" style="vertical-align:-2px;margin-right:0.2rem;"></i> ${escapeHtml(d.email)}</p>
-                <p style="font-size:0.8rem; color:var(--white-muted); margin-top:0.4rem;"><i data-lucide="credit-card" class="icon-xs" style="vertical-align:-2px;margin-right:0.2rem;"></i> License: ${escapeHtml(d.licenseNumber)}</p>
+                ${d.licenseNumber ? `<p style="font-size:0.8rem; color:var(--white-muted); margin-top:0.4rem;"><i data-lucide="credit-card" class="icon-xs" style="vertical-align:-2px;margin-right:0.2rem;"></i> License: ${escapeHtml(d.licenseNumber)}</p>` : ''}
               </div>
             </div>
           `).join('')}

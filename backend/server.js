@@ -22,6 +22,7 @@ const driverRoutes  = require('./src/routes/driver.routes');
 const customerRoutes = require('./src/routes/customer.routes');
 const packageRoutes = require('./src/routes/package.routes');
 const promoRoutes   = require('./src/routes/promo.routes');
+const contactRoutes = require('./src/routes/contact.routes');
 const prisma        = require('./src/config/prisma');
 const reminderService = require('./src/services/reminder.service');
 
@@ -78,6 +79,7 @@ app.use('/api/driver',           driverRoutes);
 app.use('/api/customer/bookings', customerRoutes);
 app.use('/api/packages',         packageRoutes);
 app.use('/api/promo',            promoRoutes);
+app.use('/api/contact',          contactRoutes);
 
 // Exposes non-secret config values to the frontend
 app.get('/api/config', (req, res) => {

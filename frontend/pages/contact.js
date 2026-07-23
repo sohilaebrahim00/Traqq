@@ -1,4 +1,5 @@
 import { showToast } from '../utils/auth.js';
+import { api } from '../services/api.js';
 
 const SLIDER_IMAGES = [
   { src: '/assets/images/contact-us-1.png', alt: 'TRAQQ professional shuttle service' },
@@ -107,8 +108,8 @@ export default function contact(root) {
                 <span class="contact-assist-val"><a href="mailto:support@mytraqq.com">support@mytraqq.com</a></span>
               </div>
               <div class="contact-assist-detail">
-                <span class="contact-assist-label">Phone</span>
-                <span class="contact-assist-val"><a href="tel:6823903071">682-390-3071</a></span>
+                <span class="contact-assist-label">Response Time</span>
+                <span class="contact-assist-val">Typically within a few hours during business hours</span>
               </div>
               <div class="contact-assist-detail">
                 <span class="contact-assist-label">Address</span>
@@ -169,7 +170,7 @@ export default function contact(root) {
   getField('c-message').addEventListener('input', () => clearError('err-message', 'c-message'));
 
   // ── Form submit ────────────────────────────────────────
-  root.querySelector('#contact-form').addEventListener('submit', (e) => {
+  root.querySelector('#contact-form').addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const name = getField('c-name').value.trim();
@@ -191,12 +192,16 @@ export default function contact(root) {
     btn.disabled = true;
     btn.textContent = 'Sending...';
 
-    setTimeout(() => {
-      showToast('Thank you for contacting TRAQQ. Our team will review your message and get back to you shortly.', 'success');
+    try {
+      await api.post('/contact', { name, email, phone, type, message });
+      showToast('Message sent! Our team will get back to you shortly.', 'success');
       root.querySelector('#contact-form').reset();
+    } catch (err) {
+      showToast(err.message || 'Failed to send message. Please try again.', 'error');
+    } finally {
       btn.disabled = false;
       btn.textContent = 'Send Message';
-    }, 1200);
+    }
   });
 
   return () => stopAuto();

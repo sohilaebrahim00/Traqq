@@ -29,8 +29,8 @@ function renderBookingCard(b) {
             <p>${escapeHtml(b.pickupTime || '—')}</p>
           </div>
           <div>
-            <p class="booking-card-label">Terminal</p>
-            <p>DFW Terminal ${escapeHtml(b.dropoffTerminal || '—')}</p>
+            <p class="booking-card-label">${b.tripDirection === 'POINT_TO_POINT' ? 'Category' : 'Terminal'}</p>
+            <p>${b.tripDirection === 'POINT_TO_POINT' ? escapeHtml(b.bookingType ? b.bookingType.replace('_', ' ') : 'Point-to-Point') : (b.dropoffTerminal ? `DFW Terminal ${escapeHtml(b.dropoffTerminal)}` : 'DFW Airport')}</p>
           </div>
           <div>
             <p class="booking-card-label">Passengers</p>

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "918024261306",
+    "project_id": "traqq-b7802",
+    "storage_bucket": "traqq-b7802.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:918024261306:android:44d28125cc987904dbbc83",
+        "android_client_info": {
+          "package_name": "com.traqq.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyACULU8p9gx7ense1mtPEQcxOIAB_kCSsc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

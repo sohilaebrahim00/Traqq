@@ -249,7 +249,7 @@ input, button { font-family: inherit; }
 .terminal-btn.selected { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); font-weight: 600; }
 
 /* ── Trip Direction step ── */
-.direction-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.75rem; }
+.direction-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem; margin-top: 0.75rem; }
 .direction-btn {
   display: flex; flex-direction: column; align-items: center; gap: 0.6rem;
   padding: 1.75rem 1rem;
@@ -263,6 +263,21 @@ input, button { font-family: inherit; }
 .direction-label { font-weight: 600; font-size: 0.9rem; }
 .direction-sub { font-size: 0.775rem; color: var(--white-muted); }
 .direction-btn.selected .direction-sub { color: rgba(201,168,76,0.75); }
+
+/* ── Booking Type selector (P2P) ── */
+.booking-type-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.5rem; margin-top: 0.5rem;
+}
+.booking-type-btn {
+  padding: 0.6rem 0.75rem;
+  background: var(--off-black); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); color: var(--white-muted);
+  font-size: 0.8rem; font-weight: 500; cursor: pointer;
+  transition: all var(--transition); text-align: center;
+}
+.booking-type-btn:hover { border-color: var(--gold-light); color: var(--white); }
+.booking-type-btn.selected { background: var(--gold-dim); border-color: var(--gold); color: var(--gold); font-weight: 600; }
 
 /* ── Booking Summary panel ── */
 .booking-summary {
@@ -374,6 +389,7 @@ input, button { font-family: inherit; }
   .btn { width: 100%; }
   .terminal-grid { grid-template-columns: repeat(2, 1fr); }
   .direction-grid { grid-template-columns: 1fr; }
+  .booking-type-grid { grid-template-columns: repeat(2, 1fr); }
 }
 
 /* ══════════════════════════════════════════════
@@ -2641,5 +2657,111 @@ p + p { margin-top: 1rem; }
   margin: 0.25rem 0;
 }
 .promo-stat-label { font-size: 0.8rem; color: var(--white-muted); }
+
+/* ── Admin Calendar ───────────────────────────────────── */
+.calendar-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.cal-view-btn.active {
+  background: var(--gold);
+  color: var(--bg);
+  border-color: var(--gold);
+}
+.cal-week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.5rem;
+}
+@media (max-width: 900px) {
+  .cal-week-grid { grid-template-columns: repeat(4, 1fr); }
+}
+@media (max-width: 600px) {
+  .cal-week-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.cal-week-day {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem;
+  min-height: 140px;
+}
+.cal-week-day.cal-today {
+  border-color: var(--gold);
+  background: rgba(201,168,76,0.06);
+}
+.cal-week-day-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 0.5rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--border);
+}
+.cal-week-day-events {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.cal-event-compact {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  padding: 0.3rem 0.4rem;
+  background: var(--bg);
+  border-radius: 4px;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.cal-event-compact:hover {
+  background: rgba(255,255,255,0.06);
+}
+.cal-event-card {
+  display: flex;
+  gap: 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  text-decoration: none;
+  overflow: hidden;
+  transition: border-color 0.2s, background 0.2s;
+  cursor: pointer;
+}
+.cal-event-card:hover {
+  border-color: var(--gold);
+  background: rgba(201,168,76,0.05);
+}
+.cal-event-card-stripe {
+  width: 4px;
+  flex-shrink: 0;
+}
+.cal-event-card-body {
+  padding: 0.85rem 0.75rem 0.85rem 0;
+  flex: 1;
+}
+
+/* ── Booking form wheelchair notice ──────────────────── */
+.wheelchair-notice a {
+  color: #9090ff;
+  text-decoration: underline;
+}
+.btn-ghost.btn-sm {
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+}
+
+/* ── Admin booking edit panel ────────────────────────── */
+.admin-detail-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+#edit-panel .form-label { margin-top: 0; }
 
 

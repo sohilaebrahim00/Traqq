@@ -117,8 +117,26 @@ function renderDetails(booking) {
         <h3 class="details-card-title">Trip Details</h3>
         <div class="detail-row"><span>Pickup Date</span><span>${formatDate(booking.pickupDate)}</span></div>
         <div class="detail-row"><span>Pickup Time</span><span>${formatTime(booking.pickupTime)}</span></div>
-        <div class="detail-row"><span>From</span><span>${escapeHtml(booking.pickupAddress)}</span></div>
-        <div class="detail-row"><span>Drop-off</span><span>DFW Terminal ${escapeHtml(booking.dropoffTerminal)}</span></div>
+        ${(() => {
+          const dir = booking.tripDirection || 'TO_DFW';
+          const terminal = booking.dropoffTerminal ? `DFW Terminal ${escapeHtml(booking.dropoffTerminal)}` : 'DFW International Airport';
+          if (dir === 'FROM_DFW') {
+            return [
+              `<div class="detail-row"><span>Pickup</span><span>${terminal}</span></div>`,
+              `<div class="detail-row"><span>Drop-off</span><span>${escapeHtml(booking.destinationAddress || booking.pickupAddress)}</span></div>`
+            ].join('');
+          }
+          if (dir === 'POINT_TO_POINT') {
+            return [
+              `<div class="detail-row"><span>Pickup</span><span>${escapeHtml(booking.pickupAddress)}</span></div>`,
+              booking.destinationAddress ? `<div class="detail-row"><span>Drop-off</span><span>${escapeHtml(booking.destinationAddress)}</span></div>` : ''
+            ].join('');
+          }
+          return [
+            `<div class="detail-row"><span>Pickup</span><span>${escapeHtml(booking.pickupAddress)}</span></div>`,
+            `<div class="detail-row"><span>Drop-off</span><span>${terminal}</span></div>`
+          ].join('');
+        })()}
         <div class="detail-row"><span>Passengers</span><span>${booking.passengerCount}</span></div>
         <div class="detail-row"><span>Carry-on Bags</span><span>${booking.carryOnCount}</span></div>
         <div class="detail-row"><span>Checked Bags</span><span>${booking.checkedLuggageCount}</span></div>

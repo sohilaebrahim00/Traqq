@@ -1,6 +1,25 @@
 const { z } = require('zod');
 const prisma = require('../config/prisma');
 
+// ── Admin schemas ─────────────────────────────────────────────────────────────
+
+const createPromoSchema = z.object({
+  code:          z.string().min(2).max(30).transform(s => s.toUpperCase().trim().replace(/\s+/g, '')),
+  discountPct:   z.number().int().min(1).max(100),
+  description:   z.string().max(200).default(''),
+  firstRideOnly: z.boolean().default(true),
+  maxUses:       z.number().int().min(1).nullable().default(null),
+  isActive:      z.boolean().default(true)
+});
+
+const updatePromoSchema = z.object({
+  isActive:      z.boolean().optional(),
+  discountPct:   z.number().int().min(1).max(100).optional(),
+  description:   z.string().max(200).optional(),
+  maxUses:       z.number().int().min(1).nullable().optional(),
+  firstRideOnly: z.boolean().optional()
+});
+
 const applySchema = z.object({
   code:      z.string().min(1).transform(s => s.toUpperCase().trim()),
   bookingId: z.string().min(1)
@@ -178,4 +197,65 @@ async function getPromoUsage(req, res, next) {
   }
 }
 
-module.exports = { applyPromo, getPromoUsage };
+// ── Admin: list all promo codes ───────────────────────────────────────────────
+
+async function getAllPromoCodes(req, res, next) {
+  try {
+    const codes = await prisma.promoCode.findMany({
+      include: { _count: { select: { uses: true } } },
+      orderBy: { createdAt: 'desc' }
+    });
+    res.json({ codes });
+  } catch (err) {
+    next(err);
+  }
+}
+
+// ── Admin: create a promo code ────────────────────────────────────────────────
+
+async function createPromoCode(req, res, next) {
+  try {
+    const data = createPromoSchema.parse(req.body);
+    const existing = await prisma.promoCode.findUnique({ where: { code: data.code } });
+    if (existing) {
+      return res.status(409).json({ error: `Promo code "${data.code}" already exists.` });
+    }
+    const promo = await prisma.promoCode.create({
+      data,
+      include: { _count: { select: { uses: true } } }
+    });
+    res.status(201).json({ success: true, promo });
+  } catch (err) {
+    if (err.name === 'ZodError') {
+      return res.status(400).json({ error: err.errors[0]?.message || 'Invalid promo code data.' });
+    }
+    next(err);
+  }
+}
+
+// ── Admin: update a promo code ────────────────────────────────────────────────
+
+async function updatePromoCode(req, res, next) {
+  try {
+    const { id } = req.params;
+    const data = updatePromoSchema.parse(req.body);
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ error: 'No fields to update.' });
+    }
+    const existing = await prisma.promoCode.findUnique({ where: { id } });
+    if (!existing) return res.status(404).json({ error: 'Promo code not found.' });
+    const promo = await prisma.promoCode.update({
+      where: { id },
+      data,
+      include: { _count: { select: { uses: true } } }
+    });
+    res.json({ success: true, promo });
+  } catch (err) {
+    if (err.name === 'ZodError') {
+      return res.status(400).json({ error: err.errors[0]?.message || 'Invalid update data.' });
+    }
+    next(err);
+  }
+}
+
+module.exports = { applyPromo, getPromoUsage, getAllPromoCodes, createPromoCode, updatePromoCode };

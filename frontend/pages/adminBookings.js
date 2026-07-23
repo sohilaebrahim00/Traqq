@@ -81,11 +81,11 @@ function buildTable(list) {
           ${list.map(b => `
             <tr data-id="${b.id}">
               <td><span class="booking-ref-sm">${escapeHtml(b.bookingRef) || 'TRQ-'+b.id.slice(-8).toUpperCase()}</span></td>
-              <td style="white-space:nowrap;">${b.tripDirection === 'FROM_DFW' ? '← From DFW' : '→ To DFW'}</td>
+              <td style="white-space:nowrap;">${b.tripDirection === 'FROM_DFW' ? '← From DFW' : b.tripDirection === 'POINT_TO_POINT' ? '↔ Point-to-Point' : '→ To DFW'}</td>
               <td style="white-space:nowrap;">${fmtDate(b.pickupDate)}</td>
               <td style="white-space:nowrap;">${escapeHtml(b.pickupTime)}</td>
               <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${escapeHtml(b.pickupAddress)}">${escapeHtml(b.pickupAddress)}</td>
-              <td style="white-space:nowrap;">DFW ${escapeHtml(b.dropoffTerminal)}</td>
+              <td style="white-space:nowrap;">${b.dropoffTerminal ? 'DFW ' + escapeHtml(b.dropoffTerminal) : (b.bookingType && b.bookingType !== 'AIRPORT' ? escapeHtml(b.bookingType.replace('_', ' ')) : '—')}</td>
               <td>${b.passengerCount}</td>
               <td>${b.carryOnCount ?? 0}</td>
               <td>${b.checkedLuggageCount ?? 0}</td>
@@ -158,6 +158,7 @@ export default async function adminBookings(root, { isActive } = {}) {
               <option value="">All Directions</option>
               <option value="TO_DFW">To DFW</option>
               <option value="FROM_DFW">From DFW</option>
+              <option value="POINT_TO_POINT">Point-to-Point</option>
             </select>
             <select class="admin-select" id="terminal-filter">
               <option value="">All Terminals</option>

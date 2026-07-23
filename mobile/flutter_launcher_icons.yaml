@@ -1,0 +1,16 @@
+# Run: dart run flutter_launcher_icons
+
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: false
+
+  image_path: "assets/images/icon.png"
+
+  # Android adaptive icon (API 26+)
+  adaptive_icon_background: "#0A0A0A"
+  adaptive_icon_foreground: "assets/images/icon_foreground.png"
+
+  min_sdk_android: 21
+
+  web:
+    generate: false

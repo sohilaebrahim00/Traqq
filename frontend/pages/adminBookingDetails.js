@@ -163,12 +163,26 @@ export default async function adminBookingDetails(root, { params, isActive } = {
           <div>
             <label class="form-label">Terminal</label>
             <select class="form-input" id="edit-terminal">
+              <option value="">— N/A (non-airport) —</option>
               ${['A','B','C','D','E'].map(t => `<option value="${t}"${booking.dropoffTerminal === t ? ' selected' : ''}>${t}</option>`).join('')}
             </select>
           </div>
           <div>
-            <label class="form-label">Airline</label>
+            <label class="form-label">Airline / Venue</label>
             <input type="text" class="form-input" id="edit-airline" value="${escapeHtml(booking.airline || '')}" placeholder="Optional" />
+          </div>
+          <div style="grid-column:1/-1;">
+            <label class="form-label">Pickup Address</label>
+            <input type="text" class="form-input" id="edit-pickup-address" value="${escapeHtml(booking.pickupAddress || '')}" />
+          </div>
+          ${booking.tripDirection === 'POINT_TO_POINT' || booking.destinationAddress ? `
+          <div style="grid-column:1/-1;">
+            <label class="form-label">Destination Address</label>
+            <input type="text" class="form-input" id="edit-dest-address" value="${escapeHtml(booking.destinationAddress || '')}" placeholder="Optional — for Point-to-Point" />
+          </div>` : ''}
+          <div style="grid-column:1/-1;">
+            <label class="form-label">Customer Notes</label>
+            <input type="text" class="form-input" id="edit-notes" value="${escapeHtml(booking.notes || '')}" placeholder="Special instructions..." />
           </div>
           <div class="full-width" style="grid-column:1/-1;">
             <label class="form-label">Admin Note (internal only)</label>
@@ -194,14 +208,34 @@ export default async function adminBookingDetails(root, { params, isActive } = {
           </p>
           ${row('Booking Ref', `<span class="booking-ref-sm">${ref}</span>`)}
           ${row('Booking ID', `<code style="font-size:0.72rem;color:var(--white-muted);">${booking.id}</code>`)}
-          ${row('Trip Direction', booking.tripDirection === 'FROM_DFW' ? '← From DFW' : '→ To DFW')}
+          ${row('Booking Type', booking.bookingType || 'AIRPORT')}
+          ${row('Trip Direction', booking.tripDirection === 'FROM_DFW' ? '← From DFW' : booking.tripDirection === 'POINT_TO_POINT' ? '⇄ Point-to-Point' : '→ To DFW')}
           ${row('Pickup Date', fmtDate(booking.pickupDate))}
           ${row('Pickup Time', escapeHtml(booking.pickupTime))}
-          ${row('Pickup Address', escapeHtml(booking.pickupAddress))}
-          ${row('DFW Terminal', `DFW Terminal ${escapeHtml(booking.dropoffTerminal)}`)}
+          ${(() => {
+            const dir = booking.tripDirection || 'TO_DFW';
+            const terminal = booking.dropoffTerminal ? `DFW Terminal ${escapeHtml(booking.dropoffTerminal)}` : null;
+            if (dir === 'FROM_DFW') {
+              return [
+                terminal ? row('Pickup', terminal) : '',
+                row('Drop-off', escapeHtml(booking.destinationAddress || booking.pickupAddress))
+              ].join('');
+            }
+            if (dir === 'POINT_TO_POINT') {
+              return [
+                row('Pickup', escapeHtml(booking.pickupAddress)),
+                booking.destinationAddress ? row('Drop-off', escapeHtml(booking.destinationAddress)) : ''
+              ].join('');
+            }
+            return [
+              row('Pickup', escapeHtml(booking.pickupAddress)),
+              terminal ? row('Drop-off', terminal) : ''
+            ].join('');
+          })()}
           ${row('Vans Requested', booking.vanCount || 1)}
-          ${booking.airline ? row('Airline', escapeHtml(booking.airline)) : ''}
-          ${booking.departureTime ? row('Flight Departure', escapeHtml(booking.departureTime)) : ''}
+          ${booking.airline ? row('Airline / Venue', escapeHtml(booking.airline)) : ''}
+          ${booking.departureTime ? row('Departure / Event Time', escapeHtml(booking.departureTime)) : ''}
+          ${booking.notes ? row('Customer Notes', escapeHtml(booking.notes)) : ''}
           ${row('Created', fmtDateTime(booking.createdAt))}
         </div>
 
@@ -366,17 +400,23 @@ export default async function adminBookingDetails(root, { params, isActive } = {
       const errEl = root.querySelector('#edit-error');
       errEl.style.display = 'none';
 
+      // Helper: safely parse int, returns undefined instead of NaN
+      const safeInt = (val) => { const n = parseInt(val, 10); return isNaN(n) ? undefined : n; };
+
       const payload = {
         pickupDate:          root.querySelector('#edit-date')?.value || undefined,
         pickupTime:          root.querySelector('#edit-time')?.value || undefined,
-        passengerCount:      parseInt(root.querySelector('#edit-passengers')?.value) || undefined,
-        vanCount:            parseInt(root.querySelector('#edit-vans')?.value) || undefined,
-        carryOnCount:        parseInt(root.querySelector('#edit-carryon')?.value),
-        checkedLuggageCount: parseInt(root.querySelector('#edit-checked')?.value),
+        passengerCount:      safeInt(root.querySelector('#edit-passengers')?.value),
+        vanCount:            safeInt(root.querySelector('#edit-vans')?.value),
+        carryOnCount:        safeInt(root.querySelector('#edit-carryon')?.value),
+        checkedLuggageCount: safeInt(root.querySelector('#edit-checked')?.value),
         phoneNumber:         root.querySelector('#edit-phone')?.value.trim() || undefined,
         email:               root.querySelector('#edit-email')?.value.trim() || null,
-        dropoffTerminal:     root.querySelector('#edit-terminal')?.value || undefined,
+        dropoffTerminal:     root.querySelector('#edit-terminal')?.value || null,
         airline:             root.querySelector('#edit-airline')?.value.trim() || null,
+        pickupAddress:       root.querySelector('#edit-pickup-address')?.value.trim() || undefined,
+        destinationAddress:  root.querySelector('#edit-dest-address')?.value.trim() || null,
+        notes:               root.querySelector('#edit-notes')?.value.trim() || null,
         note:                root.querySelector('#edit-note')?.value.trim() || undefined
       };
 

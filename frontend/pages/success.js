@@ -34,7 +34,7 @@ export default async function success(root) {
           <div class="success-icon"><i data-lucide="check" class="icon-xl"></i></div>
         </div>
         <h1>You're All Set!</h1>
-        <p class="success-sub">Your private DFW shuttle is confirmed. Your driver will be at your door on time.</p>
+        <p class="success-sub">Your premium transportation is confirmed. Your driver will be with you on time.</p>
 
         <div class="success-qr-area">
           <p class="qr-label">Show this QR code at pickup</p>
@@ -97,7 +97,7 @@ export default async function success(root) {
         </div>
         <div class="success-detail-item">
           <span class="success-detail-label">Direction</span>
-          <span>${booking.tripDirection === 'FROM_DFW' ? 'From DFW Airport' : 'To DFW Airport'}</span>
+          <span>${booking.tripDirection === 'FROM_DFW' ? 'From DFW Airport' : booking.tripDirection === 'POINT_TO_POINT' ? 'Point-to-Point' : 'To DFW Airport'}</span>
         </div>
         <div class="success-detail-item">
           <span class="success-detail-label">Status</span>
@@ -115,14 +115,27 @@ export default async function success(root) {
           <span class="success-detail-label">Pickup Time</span>
           <span>${formatTime(booking.pickupTime)}</span>
         </div>
-        <div class="success-detail-item">
-          <span class="success-detail-label">From</span>
-          <span>${escapeHtml(booking.pickupAddress)}</span>
-        </div>
-        <div class="success-detail-item">
-          <span class="success-detail-label">Terminal</span>
-          <span>DFW Terminal ${escapeHtml(booking.dropoffTerminal)}</span>
-        </div>
+        ${(() => {
+          const dir = booking.tripDirection || 'TO_DFW';
+          const terminal = booking.dropoffTerminal ? `DFW Terminal ${escapeHtml(booking.dropoffTerminal)}` : 'DFW International Airport';
+          if (dir === 'FROM_DFW') {
+            return [
+              `<div class="success-detail-item"><span class="success-detail-label">Pickup</span><span>${terminal}</span></div>`,
+              `<div class="success-detail-item"><span class="success-detail-label">Drop-off</span><span>${escapeHtml(booking.destinationAddress || booking.pickupAddress)}</span></div>`
+            ].join('');
+          }
+          if (dir === 'POINT_TO_POINT') {
+            return [
+              `<div class="success-detail-item"><span class="success-detail-label">Pickup</span><span>${escapeHtml(booking.pickupAddress)}</span></div>`,
+              booking.destinationAddress ? `<div class="success-detail-item"><span class="success-detail-label">Drop-off</span><span>${escapeHtml(booking.destinationAddress)}</span></div>` : ''
+            ].join('');
+          }
+          // TO_DFW
+          return [
+            `<div class="success-detail-item"><span class="success-detail-label">Pickup</span><span>${escapeHtml(booking.pickupAddress)}</span></div>`,
+            `<div class="success-detail-item"><span class="success-detail-label">Drop-off</span><span>${terminal}</span></div>`
+          ].join('');
+        })()}
         <div class="success-detail-item">
           <span class="success-detail-label">Passengers</span>
           <span>${booking.passengerCount}</span>
@@ -154,6 +167,26 @@ export default async function success(root) {
     // Keep traqq_booking_id so the page still works on refresh.
     // A new booking will overwrite it. sessionStorage is tab-scoped anyway.
     sessionStorage.removeItem('traqq_booking_data');
+
+    // Google Ads conversion tracking (fires ONLY on verified successful payment)
+    if ((booking.paymentStatus === 'PAID' || booking.qrCode) && !sessionStorage.getItem(`traqq_gads_conv_${booking.id}`)) {
+      if (typeof window.gtag === 'function') {
+        window.gtag('event', 'conversion', {
+          'send_to': window.GOOGLE_ADS_CONVERSION_ID || 'AW-CONVERSION_ID',
+          'value': Number(booking.price || 99),
+          'currency': 'USD',
+          'transaction_id': booking.bookingRef || booking.id
+        });
+      } else if (window.dataLayer && Array.isArray(window.dataLayer)) {
+        window.dataLayer.push({
+          'event': 'conversion',
+          'value': Number(booking.price || 99),
+          'currency': 'USD',
+          'transaction_id': booking.bookingRef || booking.id
+        });
+      }
+      sessionStorage.setItem(`traqq_gads_conv_${booking.id}`, 'true');
+    }
   } catch {
     qrHint.textContent = 'Unable to load booking details. Your booking was saved — use your Booking ID to look it up.';
     root.querySelector('#booking-details-block').innerHTML =

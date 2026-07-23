@@ -163,7 +163,7 @@ export default async function checkout(root) {
 
   function updatePriceSummary(price, promo) {
     if (promo) {
-      orderPrice.textContent = fmtMoney(99);
+      orderPrice.textContent = fmtMoney(Number(booking.price) || 99);
       promoDiscountRow.style.display = '';
       promoDiscountLabel.textContent = `Promo: ${promo.code} (${promo.discountPct}% off)`;
       promoDiscountAmount.textContent = `−${fmtMoney(promo.discountAmount)}`;

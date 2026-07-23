@@ -269,8 +269,8 @@ export default async function bookingTracking(root, { params = {}, isActive } = 
             <span class="ds-info-value">${escapeHtml(data.pickupAddress)}</span>
           </div>
           <div class="ds-info-row">
-            <span class="ds-info-label"><i data-lucide="plane" class="icon-xs"></i> Direction</span>
-            <span class="ds-info-value">DFW Terminal ${escapeHtml(data.dropoffTerminal)}</span>
+            <span class="ds-info-label"><i data-lucide="compass" class="icon-xs"></i> Direction / Destination</span>
+            <span class="ds-info-value">${data.tripDirection === 'POINT_TO_POINT' ? escapeHtml(data.destinationAddress || (data.bookingType ? data.bookingType.replace('_', ' ') : 'Point-to-Point')) : (data.dropoffTerminal ? `DFW Terminal ${escapeHtml(data.dropoffTerminal)}` : 'DFW Airport')}</span>
           </div>
         `;
       }
