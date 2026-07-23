@@ -3,9 +3,7 @@ generator client {
 }
 
 datasource db {
-  // Local dev: SQLite (file:./prisma/dev.db in .env).
-  // Production: switch provider back to "postgresql" and update DATABASE_URL.
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 

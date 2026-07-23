@@ -12,11 +12,22 @@ backend/.env.local
 scripts/setup-vps-env.sh
 
 # SQLite local database
+backend/prisma/*.db
+backend/prisma/*.db-journal
 backend/prisma/dev.db
-backend/prisma/dev.db-journal
+backend/prisma/prisma/dev.db
 
-# PM2 logs
+# PM2 logs & output dumps
 logs/
+*.log
+*_stdout.txt
+*_stderr.txt
+
+# Mobile build output & local configs
+mobile/android/.gradle/
+mobile/android/local.properties
+mobile/ios/Flutter/Generated.xcconfig
+mobile/ios/Flutter/ephemeral/
 
 # OS
 .DS_Store

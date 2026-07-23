@@ -5,8 +5,8 @@
 -- 1. Add vanCount to bookings (default 1 for all existing rows)
 ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "vanCount" INTEGER NOT NULL DEFAULT 1;
 
--- 2. Make licenseNumber nullable on drivers
-ALTER TABLE "drivers" ALTER COLUMN "licenseNumber" DROP NOT NULL;
+-- 2. Make licenseNumber nullable on driver_profiles
+ALTER TABLE "driver_profiles" ALTER COLUMN "licenseNumber" DROP NOT NULL;
 
 -- 3. Create booking_edit_logs table
 CREATE TABLE IF NOT EXISTS "booking_edit_logs" (
