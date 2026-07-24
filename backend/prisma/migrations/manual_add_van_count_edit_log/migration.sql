@@ -5,7 +5,11 @@
 -- 1. Add vanCount to bookings (default 1 for all existing rows)
 ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "vanCount" INTEGER NOT NULL DEFAULT 1;
 
--- 2. Make licenseNumber nullable on driver_profiles
+-- 2. Add bookingType to bookings and make dropoffTerminal nullable
+ALTER TABLE "bookings" ADD COLUMN IF NOT EXISTS "bookingType" TEXT NOT NULL DEFAULT 'AIRPORT';
+ALTER TABLE "bookings" ALTER COLUMN "dropoffTerminal" DROP NOT NULL;
+
+-- 3. Make licenseNumber nullable on driver_profiles
 ALTER TABLE "driver_profiles" ALTER COLUMN "licenseNumber" DROP NOT NULL;
 
 -- 3. Create booking_edit_logs table
