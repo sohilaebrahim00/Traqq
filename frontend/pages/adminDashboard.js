@@ -102,7 +102,7 @@ export default async function adminDashboard(root, { isActive } = {}) {
       statsGrid.innerHTML = `
         <div style="grid-column:1/-1;padding:1.5rem;">
           <p class="form-error" style="margin-bottom:0.5rem;">${msg}</p>
-          <p style="font-size:0.8rem;color:var(--white-muted);">Make sure you are signed in as admin and the backend is running on port 4000.</p>
+          <p style="font-size:0.8rem;color:var(--white-muted);">Make sure you are signed in as an admin and the backend API is reachable.</p>
         </div>`;
     }
     if (recentDiv) {

@@ -14,12 +14,12 @@
 
 require('dotenv').config();
 const bcrypt = require('bcryptjs');
-const { PrismaClient } = require('@prisma/client');
+const crypto = require('crypto');
 
-const ADMIN_EMAIL    = 'admin@traqq.local';
-const ADMIN_PHONE    = '0000000001';
-const ADMIN_NAME     = 'TRAQQ Admin';
-const ADMIN_PASSWORD = 'Admin@123456';
+const ADMIN_EMAIL    = process.env.ADMIN_EMAIL || 'admin@traqq.local';
+const ADMIN_PHONE    = process.env.ADMIN_PHONE || '0000000001';
+const ADMIN_NAME     = process.env.ADMIN_NAME  || 'TRAQQ Admin';
+const ADMIN_PASSWORD = process.env.ADMIN_INITIAL_PASSWORD || crypto.randomBytes(12).toString('hex');
 
 const prisma = new PrismaClient();
 

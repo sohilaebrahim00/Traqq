@@ -87,7 +87,7 @@ export default function login(root) {
       if (err.status === 401) {
         errEl.textContent = 'Invalid email or password.';
       } else if (!err.status) {
-        errEl.textContent = 'Unable to connect to the server. Please check that the backend is running on port 4000 and try again.';
+        errEl.textContent = 'Unable to connect to the server. Please check your network connection and try again.';
       } else {
         errEl.textContent = err.message || 'Something went wrong. Please try again.';
       }
